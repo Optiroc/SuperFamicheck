@@ -9,11 +9,9 @@ using namespace std;
 
 struct sfcRomInfo {
     string filepath;
-    int fileSize;
     int imageSize;
     int imageOffset = 0;
     int headerLocation;
-    vector<char> header;
 
     bool valid = false;
     bool hasCopierHeader = false;
@@ -26,13 +24,12 @@ struct sfcRomInfo {
 
     uint8_t chipset;
     uint8_t chipsetSubtype = 0;
-    uint8_t romsize;
-    uint8_t ramsize;
+    uint8_t romSize;
+    uint8_t ramSize;
     uint8_t countryCode;
 
     uint16_t checksum;
     uint16_t complement;
-    uint16_t resetVector;
 
     string title;
     string mapperName;
@@ -50,7 +47,7 @@ struct sfcRomInfo {
     bool fix();
 
 private:
-    bool getHeader(ifstream &file, int location);
+    void getHeaderInfo(const vector<uint8_t> &header);
 };
 
 #endif /* sfcRomInfo_hpp */
