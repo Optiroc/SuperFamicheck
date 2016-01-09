@@ -12,11 +12,11 @@ struct sfcRomInfo {
     int imageSize;
     int imageOffset = 0;
     int headerLocation;
+    bool hasNewFormatHeader = false;
 
     bool valid = false;
     bool hasCopierHeader = false;
-    bool hasNewFormatHeader = false;
-    bool hasCorrectChecksum = false;
+    bool hasIssues = false;
 
     uint8_t mode;
     uint8_t mapper;
@@ -39,6 +39,9 @@ struct sfcRomInfo {
     string version;
     string country;
 
+    bool correctTitle = false;
+    uint8_t correctMode = 0;
+    uint8_t correctRomSize = 0;
     uint16_t correctChecksum;
     uint16_t correctComplement;
 
@@ -47,6 +50,7 @@ struct sfcRomInfo {
     bool fix();
 
 private:
+    int scoreHeaderLocation(const vector<uint8_t> &image, int location);
     void getHeaderInfo(const vector<uint8_t> &header);
 };
 

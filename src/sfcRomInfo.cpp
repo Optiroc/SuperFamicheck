@@ -8,11 +8,13 @@
 #include <fstream>
 #include <iomanip>
 #include <algorithm>
+#include <climits>
 
 using namespace std;
 
-uint8_t getByte(const vector<uint8_t> &vec, int offset);
 uint16_t getWord(const vector<uint8_t> &vec, int offset);
+bool validResetOpcode(uint8_t op);
+bool validInterruptOpcode(uint8_t op);
 string sjisToString(uint8_t code);
 
 sfcRomInfo::sfcRomInfo(const string& path) {
@@ -40,60 +42,97 @@ sfcRomInfo::sfcRomInfo(const string& path) {
         }
     }
 
-    // Decide header location
-    vector<uint8_t> header(0x50, 0);
-    vector<int> possibleHeaderLocations = { 0x7fb0, 0xffb0 };
+    // Score possible locations and pick best match
+    {
+        vector<unsigned int> possibleHeaderLocations = { 0xffb0, 0x7fb0, 0x40ffb0 };
+        vector<pair<int, unsigned int>> scoredHeaderLocations = {};
 
-    for (int loc : possibleHeaderLocations) {
-        header = vector<uint8_t>(image.begin() + loc, image.begin() + loc + 0x50);
-        uint8_t mode = header[0x25];
-        uint8_t mapper = mode & 0x0f;
-        uint16_t reset = getWord(header, 0x4c);
+        for (int loc : possibleHeaderLocations) {
+            int score = scoreHeaderLocation(image, loc);
+            if (score > -10) scoredHeaderLocations.emplace_back(score, loc);
+        }
 
-        // TODO? Set scores for "known mapper", "initial opcode" and "correct title".. valid if at least two tests pass
-
-        if (((mode & 0xe0) == 0x20) && (mapper == 0x0 || mapper == 0x1 || mapper == 0x2 || mapper == 0x3 || mapper == 0x5 || mapper == 0xa)) {
-
-            // If 32K/bank mapper, reset vector must point to upper half
-            if (mapper == 0 || mapper == 2 || mapper == 3) {
-                if (reset < 0x8000) {
-                    continue;
-                } else {
-                    reset -= 0x8000;
-                }
+        int top = INT_MIN;
+        for (auto p : scoredHeaderLocations) {
+            if (p.first >= top) {
+                headerLocation = p.second;
+                top = p.first;
             }
+        }
 
-            // Check first opcode
-            // 0x18 clc, 0x4c jmp, 0x5c jml, 0x78 sei, 0x9c stz, 0xe2 sep
-            uint8_t op = image[reset];
-            if (op == 0x18 || op == 0x4c || op == 0x5c || op == 0x78 || op == 0x9c || op == 0xe2) {
-                valid = true;
-                headerLocation = loc;
-                break;
-            } else {
-                cout << "reset vector: 0x" << setfill('0') << hex << setw(4) << reset << endl;
-                cout << "first opcode: 0x" << setfill('0') << hex << setw(2) << static_cast<uint16_t>(op) << endl;
-            }
+        if (headerLocation == 0) {
+            return;
+        } else {
+            valid = true;
         }
     }
-    if (!valid) return;
 
-    getHeaderInfo(header);
+    // Let's pretend we're dealing with an SFC ROM image
+    getHeaderInfo(vector<uint8_t>(image.begin() + headerLocation, image.begin() + headerLocation + 0x50));
 
-    // Fix romSize
-
-    // Calculate correct checksum
+    // Check title
     {
-        int rsize = (int)((1 << (romSize)) * 1024);
+        correctTitle = true;
+        for (int i = 0; i < 21; ++i) {
+            if (sjisToString(image[headerLocation + 0x10 + i]).empty()) correctTitle = false;
+        }
+    }
+
+    // Check ROM make up
+    {
+        // TODO: If incorrect 0x20 is probably the best fix
+        // TODO: Map mode matching header location? (Krustys fun house for example)
+        if ((mode & 0xe0) != 0x20) {
+            correctMode = mode | 0x20;
+        }
+    }
+
+    // Check ROM size
+    {
+        if (imageSize > (1 << (romSize + 10)) || imageSize <= (1 << (romSize + 8))) {
+            correctRomSize = 0;
+            uint32_t t = imageSize >> 10;
+            while (t >>= 1) correctRomSize += 1;
+        }
+    }
+
+    // Calculate checksum
+    {
+        int rsize = (int)(1 << (correctRomSize != 0 ? correctRomSize + 10 : romSize + 10));
+        if (mode == 0x3a) rsize = imageSize;
+
+        // Set up base and mask for "ROM size out of bounds mirroring"
+        uint32_t isize = static_cast<uint32_t>(image.size());
+        uint32_t mask = 1;
+        uint32_t t = isize;
+        while (t >>= 1) {
+            mask <<= 1;
+            mask += 1;
+        }
+        mask >>= 1;
+        uint32_t base = mask + 1;
+        uint32_t offset_mask = isize - base - 1;
+
+        // Add sum
         int chkloc = headerLocation + 0x2c;
         uint16_t sum = 0;
-        for (int i = 0; i < rsize; ++i) {
-            if (!(i >= chkloc && i < chkloc + 4)) sum += getByte(image, i) & 0xff;
-        }
 
+        for (int offset = 0; offset < rsize; ++offset) {
+            if (!(offset >= chkloc && offset < chkloc + 4)) {
+                if (offset < isize) {
+                    sum += image[offset];
+                } else {
+                    sum += image[base + (offset & offset_mask)];
+                }
+            }
+        }
+        
         correctChecksum = sum + 0x1fe;
         correctComplement = ~correctChecksum;
     }
+
+    if (hasCopierHeader || checksum != correctChecksum || complement != correctComplement ||
+        correctRomSize != 0 || correctMode != 0 || correctTitle == false) hasIssues = true;
 
 }
 
@@ -102,6 +141,7 @@ string sfcRomInfo::description() {
     ostringstream os;
     if (valid) {
         os << setfill('0') << hex;
+        // /*
         os << "ROM info for file \"" << filepath << "\"" << endl << endl;
 
         os << "  Title       " << title << endl;
@@ -113,20 +153,23 @@ string sfcRomInfo::description() {
         os << "  Version     " << version << endl;
         os << endl;
 
-        int romSizeKb = (int)(1 << (romSize));
-        int imageSizeKb = (int)(imageSize / 1024);
-        os << dec;
-        os << "  ROM size    " << romSizeKb << "KB";
-        if (romSizeKb != imageSizeKb) {
-            os << " (Actual size is " << (int)(imageSize / 1024) << "KB)" << endl;
+        int romSizeKb = (int)(1 << romSize);
+        int imageSizeKb = (int)(imageSize >> 10);
+        if (romSize > 0x0f || romSize < 0x05) {
+            os << "  ROM size    NG! (Actual size " << dec << imageSizeKb << hex << "KB)" << endl;
         } else {
-            os << endl;
+            os << "  ROM size    0x" << setw(2) << static_cast<uint16_t>(romSize) << " (" << dec << romSizeKb << hex << "KB";
+            if (romSizeKb != imageSizeKb) {
+                os << ", actual size " << dec << imageSizeKb << hex << "KB)" << endl;
+            } else {
+                os << ")" << endl;
+            }
         }
+
         if (ramSize) {
-            os << "  RAM size    " << (int)(1 << (ramSize)) << "KB" << endl;
+            os << "  RAM size    0x" << setw(2) << static_cast<uint16_t>(ramSize);
+            os << " (" << dec << (int)(1 << (ramSize)) << hex << "KB)" << endl;
         }
-        os << hex;
-        os << "  Speed       " << (fast ? "120ns" : "200ns") << endl;
 
         os << "  Map mode    0x" << setw(2) << static_cast<uint16_t>(mapper);
         if (mapperName.empty()) {
@@ -134,6 +177,7 @@ string sfcRomInfo::description() {
         } else {
             os << " (" << mapperName << ")" << endl;
         }
+
         os << "  Chipset     0x" << setw(2) << static_cast<uint16_t>(chipset);
         if (chipsetSubtype) {
             os << "/" << setw(2) << static_cast<uint16_t>(chipsetSubtype);
@@ -143,14 +187,33 @@ string sfcRomInfo::description() {
         } else {
             os << " (" << chipSetInfo << ")" << endl;
         }
+
+        os << "  Speed       " << (fast ? "120ns" : "200ns") << endl;
         os << endl;
 
 
-        os << "  Checksum    0x" << setw(4) << checksum << " : " << correctChecksum << endl;
-        os << "  Complement  0x" << setw(4) << complement << " : " << correctComplement << endl;
+        os << "  Checksum    0x" << setw(4) << checksum << endl;
+        os << "  Complement  0x" << setw(4) << complement << endl;
+        // */
 
-        if (hasCopierHeader) {
-            os << endl << "  File has a copier header (0x200 bytes)" << endl;
+        if (hasIssues) {
+            os << endl << "The following issues was found:" << endl;
+
+            if (correctTitle == false) {
+                os << "  ROM title contains illegal characters" << endl;
+            }
+            if (correctMode != 0) {
+                os << "  ROM makeup should be 0x" << setw(2) << static_cast<uint16_t>(correctMode) << endl;
+            }
+            if (correctRomSize != 0) {
+                os << "  ROM size should be 0x" << setw(2) << static_cast<uint16_t>(correctRomSize) << endl;
+            }
+            if (checksum != correctChecksum || complement != correctComplement) {
+                os << "  Checksum/complement should be 0x" << setw(4) << correctChecksum << "/0x" << setw(4) << correctComplement << endl;
+            }
+            if (hasCopierHeader) {
+                os << "  File has a copier header (0x200 bytes)" << endl;
+            }
         }
 
     } else {
@@ -167,6 +230,58 @@ bool sfcRomInfo::fix() {
     return valid;
 }
 
+int sfcRomInfo::scoreHeaderLocation(const vector<uint8_t> &image, int loc) {
+    if (image.size() < loc + 0x50) return -100;
+    int score = 0;
+    vector<uint8_t> header = vector<uint8_t>(image.begin() + loc, image.begin() + loc + 0x50);
+    uint16_t reset = getWord(header, 0x4c);
+
+    // If 32K/bank mapper, reset vector must point to upper half
+    if ((loc & 0xffff) < 0x8000) {
+        if (reset < 0x8000) {
+            return -100;
+        } else {
+            score += 1;
+            reset -= 0x8000;
+        }
+    }
+
+    // Correct rom makeup byte?
+    {
+        uint8_t mode = header[0x25];
+        uint8_t mapper = mode & 0x0f;
+        if (((mode & 0xe0) == 0x20) && (mapper == 0x0 || mapper == 0x1 || mapper == 0x2 || mapper == 0x3 || mapper == 0x5 || mapper == 0xa)) {
+            score += 2;
+        }
+    }
+
+    // Correct ROM & RAM size bytes?
+    {
+        if (header[0x27] >= 0x05 && header[0x27] <= 0x0f) score += 2;
+        if (header[0x28] >= 0x0a) score += 1;
+    }
+
+    // Proper title characters?
+    {
+        int validChars = 0;
+        for (int i = 0; i < 21; ++i) {
+            if (!sjisToString(header[0x10 + i]).empty()) ++validChars;
+        }
+        if (validChars == 21) score += 2;
+    }
+
+    // Reasonable reset opcode?
+    if (validResetOpcode(image[reset])) {
+        score += 2;
+    } else {
+        score -= 4;
+        //cout << filepath << "\"" << endl;
+        //cout << "BAD reset vector: 0x" << setfill('0') << hex << setw(4) << reset << endl;
+        //cout << "first opcode:     0x" << setfill('0') << hex << setw(2) << static_cast<uint16_t>(op) << endl << endl;
+    }
+
+    return score;
+}
 
 void sfcRomInfo::getHeaderInfo(const vector<uint8_t> &header) {
     mode = header[0x25];
@@ -284,101 +399,130 @@ void sfcRomInfo::getHeaderInfo(const vector<uint8_t> &header) {
     }
 }
 
-
-// Get byte with "ROM size out of bounds mirroring"
-uint8_t getByte(const vector<uint8_t> &vec, int offset) {
-    uint32_t size = static_cast<uint32_t>(vec.size());
-    if (offset >= size) {
-        uint32_t mask = 1;
-        uint32_t t = size;
-        while (t >>= 1) {
-            mask <<= 1;
-            mask += 1;
-        }
-        mask >>= 1;
-        uint32_t base = mask + 1;
-        uint32_t offset_mask = size - base - 1;
-        return vec[base + (offset & offset_mask)];
-    } else {
-        return vec[offset];
-    }
-}
-
 // Get little endian word
 uint16_t getWord(const vector<uint8_t> &vec, int offset) {
     return (uint16_t)((vec[offset]) + ((uint8_t)(vec[offset+1]) << 8));
 }
 
-// Not full SJIS, but this seems to be what's used in SNES headers
+// Opcodes used on reset
+bool validResetOpcode(uint8_t op) {
+    switch (op) {
+        case 0x18: // clc
+        case 0x38: // sec
+        case 0x4c: // jmp abs
+        case 0x5c: // jml abs
+        case 0x78: // sei
+        case 0x80: // bra rel
+        case 0x9c: // stz abs
+        case 0xa0: // ldy #imm
+        case 0xa9: // lda #imm
+        case 0xc2: // rep
+        case 0xd4: // pei (zp)
+        case 0xd8: // cld
+        case 0xdc: // jmp [abs long]
+        case 0xe2: // sep
+        case 0xe6: // inc zp
+        case 0xea: // nop
+            return true;
+        default:
+            return false;
+    }
+}
+
+// Opcodes used on reset
+bool validInterruptOpcode(uint8_t op) {
+    switch (op) {
+        case 0x08: // php
+        case 0x18: // clc
+        case 0x40: // rti
+        case 0x48: // pha
+        case 0x5c: // jml abs
+        case 0x6c: // jmp [abs]
+        case 0x78: // sei
+        case 0x8b: // phb
+        case 0xc2: // rep
+        case 0xdc: // jmp [abs long]
+        case 0xe2: // sep
+            return true;
+        default:
+            cout << "NMI 0x" << setfill('0') << setw(2) << hex << static_cast<unsigned int>(op) << endl;
+            return false;
+    }
+}
+
+
+// SJIS subset used in SNES header
 string sjisToString(uint8_t code) {
     if (code >= 0x20 && code <= 0x7e) {
         return string(1, static_cast<char>(code));
     } else {
         switch (code) {
-            case 0xa1: return "｡";
-            case 0xa2: return "｢";
-            case 0xa3: return "｣	";
-            case 0xa4: return "､";
-            case 0xa5: return "･";
-            case 0xa6: return "ｦ";
-            case 0xa7: return "ｧ";
-            case 0xa8: return "ｨ";
-            case 0xa9: return "ｩ";
-            case 0xaa: return "ｪ";
-            case 0xab: return "ｫ";
-            case 0xac: return "ｬ";
-            case 0xad: return "ｭ";
-            case 0xae: return "ｮ";
-            case 0xaf: return "ｯ";
+            case 0xa1: return "\uff61";
+            case 0xa2: return "\uff62";
+            case 0xa3: return "\uff63";
+            case 0xa4: return "\uff64";
+            case 0xa5: return "\uff65";
+            case 0xa6: return "\uff66";
+            case 0xa7: return "\uff67";
+            case 0xa8: return "\uff68";
+            case 0xa9: return "\uff69";
+            case 0xaa: return "\uff6a";
+            case 0xab: return "\uff6b";
+            case 0xac: return "\uff6c";
+            case 0xad: return "\uff6d";
+            case 0xae: return "\uff6e";
+            case 0xaf: return "\uff6f";
 
-            case 0xb0: return "ｰ";
-            case 0xb1: return "ｱ";
-            case 0xb2: return "ｲ";
-            case 0xb3: return "ｳ";
-            case 0xb4: return "ｴ";
-            case 0xb5: return "ｵ";
-            case 0xb6: return "ｶ";
-            case 0xb7: return "ｷ";
-            case 0xb8: return "ｸ";
-            case 0xb9: return "ｹ";
-            case 0xba: return "ｺ";
-            case 0xbb: return "ｻ";
-            case 0xbc: return "ｼ";
-            case 0xbd: return "ｽ";
-            case 0xbe: return "ｾ";
-            case 0xbf: return "ｿ";
+            case 0xb0: return "\uff70";
+            case 0xb1: return "\uff71";
+            case 0xb2: return "\uff72";
+            case 0xb3: return "\uff73";
+            case 0xb4: return "\uff74";
+            case 0xb5: return "\uff75";
+            case 0xb6: return "\uff76";
+            case 0xb7: return "\uff77";
+            case 0xb8: return "\uff78";
+            case 0xb9: return "\uff79";
+            case 0xba: return "\uff7a";
+            case 0xbb: return "\uff7b";
+            case 0xbc: return "\uff7c";
+            case 0xbd: return "\uff7d";
+            case 0xbe: return "\uff7e";
+            case 0xbf: return "\uff7f";
 
-            case 0xc0: return "ﾀ";
-            case 0xc1: return "ﾁ";
-            case 0xc2: return "ﾂ";
-            case 0xc3: return "ﾃ";
-            case 0xc4: return "ﾄ";
-            case 0xc5: return "ﾅ";
-            case 0xc6: return "ﾆ";
-            case 0xc7: return "ﾇ";
-            case 0xc8: return "ﾈ";
-            case 0xc9: return "ﾉ";
-            case 0xca: return "ﾊ";
-            case 0xcb: return "ﾋ";
-            case 0xcc: return "ﾌ";
-            case 0xcd: return "ﾍ";
-            case 0xce: return "ﾎ";
-            case 0xcf: return "ﾏ";
+            case 0xc0: return "\uff80";
+            case 0xc1: return "\uff81";
+            case 0xc2: return "\uff82";
+            case 0xc3: return "\uff83";
+            case 0xc4: return "\uff84";
+            case 0xc5: return "\uff85";
+            case 0xc6: return "\uff86";
+            case 0xc7: return "\uff87";
+            case 0xc8: return "\uff88";
+            case 0xc9: return "\uff89";
+            case 0xca: return "\uff8a";
+            case 0xcb: return "\uff8b";
+            case 0xcc: return "\uff8c";
+            case 0xcd: return "\uff8d";
+            case 0xce: return "\uff8e";
+            case 0xcf: return "\uff8f";
 
-            case 0xd0: return "ﾐ";
-            case 0xd1: return "ﾑ";
-            case 0xd2: return "ﾒ";
-            case 0xd3: return "ﾓ";
-            case 0xd4: return "ﾔ";
-            case 0xd5: return "ﾕ";
-            case 0xd6: return "ﾖ";
-            case 0xd7: return "ﾗ";
-            case 0xd8: return "ﾘ";
-            case 0xd9: return "ﾙ";
-            case 0xda: return "ﾚ";
-            case 0xdb: return "ﾛ";
-            case 0xdc: return "ﾜ";
-            case 0xdd: return "ﾝ";
+            case 0xd0: return "\uff90";
+            case 0xd1: return "\uff91";
+            case 0xd2: return "\uff92";
+            case 0xd3: return "\uff93";
+            case 0xd4: return "\uff94";
+            case 0xd5: return "\uff95";
+            case 0xd6: return "\uff96";
+            case 0xd7: return "\uff97";
+            case 0xd8: return "\uff98";
+            case 0xd9: return "\uff99";
+            case 0xda: return "\uff9a";
+            case 0xdb: return "\uff9b";
+            case 0xdc: return "\uff9c";
+            case 0xdd: return "\uff9d";
+            case 0xde: return "\uff9e";
+            case 0xdf: return "\uff9f";
 
             default:   return string();
         }
