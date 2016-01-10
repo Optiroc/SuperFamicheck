@@ -1,27 +1,29 @@
 #include "sfcRomInfo.hpp"
 
 #include <cstdint>
+#include <climits>
 #include <string>
 #include <vector>
 #include <iostream>
 #include <sstream>
 #include <fstream>
 #include <iomanip>
-#include <algorithm>
-#include <climits>
 
 using namespace std;
 
-uint16_t getWord(const vector<uint8_t> &vec, int offset);
 bool validResetOpcode(uint8_t op);
 bool validInterruptOpcode(uint8_t op);
 string sjisToString(uint8_t code);
 
+uint16_t getWord(const vector<uint8_t> &vec, int offset);
+void putWord(vector<uint8_t> &vec, int offset, uint16_t value);
+
 sfcRomInfo::sfcRomInfo(const string& path) {
     filepath = path;
+    int issues = 0;
 
     // Read file into buffer
-    vector<uint8_t> image(0);
+    image = vector<uint8_t>(0);
     {
         ifstream file(path, ios::binary|ios::ate);
         if (file) {
@@ -29,6 +31,7 @@ sfcRomInfo::sfcRomInfo(const string& path) {
             if ((fileSize & 0x3ff) == 0x200) {
                 hasCopierHeader = true;
                 imageOffset = 0x200;
+                ++issues;
             }
 
             imageSize = fileSize - imageOffset;
@@ -42,7 +45,7 @@ sfcRomInfo::sfcRomInfo(const string& path) {
         }
     }
 
-    // Score possible locations and pick best match
+    // Review possible header locations and pick best match
     {
         vector<unsigned int> possibleHeaderLocations = { 0xffb0, 0x7fb0, 0x40ffb0 };
         vector<pair<int, unsigned int>> scoredHeaderLocations = {};
@@ -67,167 +70,243 @@ sfcRomInfo::sfcRomInfo(const string& path) {
         }
     }
 
-    // Let's pretend we're dealing with an SFC ROM image
+
+    // So, we're probably dealing with an SFC ROM image
     getHeaderInfo(vector<uint8_t>(image.begin() + headerLocation, image.begin() + headerLocation + 0x50));
 
     // Check title
     {
-        correctTitle = true;
+        hasCorrectTitle = true;
         for (int i = 0; i < 21; ++i) {
-            if (sjisToString(image[headerLocation + 0x10 + i]).empty()) correctTitle = false;
+            if (sjisToString(image[headerLocation + 0x10 + i]).empty()) hasCorrectTitle = false;
+        }
+        if (!hasCorrectTitle) {
+            ++issues;
+            hasSevereIssues = true;
         }
     }
 
     // Check ROM make up
     {
-        // TODO: If incorrect 0x20 is probably the best fix
-        // TODO: Map mode matching header location? (Krustys fun house for example)
         if ((mode & 0xe0) != 0x20) {
-            correctMode = mode | 0x20;
+            correctedMode = headerLocation >= 0x8000 ? 0x21 : 0x20;
+            hasLegalMode = false;
+            hasSevereIssues = true;
+            ++issues;
+        }
+
+        if (mapperName.empty()) {
+            hasKnownMapper = false;
+            ++issues;
         }
     }
 
     // Check ROM size
     {
-        if (imageSize > (1 << (romSize + 10)) || imageSize <= (1 << (romSize + 8))) {
-            correctRomSize = 0;
+        if (imageSize > (1 << (romSize + 10)) || imageSize <= (1 << (romSize + 9))) {
+            uint32_t pot = imageSize;
+            int pot_n = 0;
+            while (pot >>= 1) {
+                if (pot & 1) ++pot_n;
+            }
+            correctedRomSize = (pot_n > 1) ? 1 : 0;
             uint32_t t = imageSize >> 10;
-            while (t >>= 1) correctRomSize += 1;
+            while (t >>= 1) ++correctedRomSize;
+            if (correctedRomSize != romSize) ++issues;
+        }
+    }
+
+
+    // Check RAM size
+    {
+        if ((hasRam && ramSize > 0x0f) || (!hasRam && ramSize != 0)) {
+            hasCorrectRamSize = false;
+            ++issues;
         }
     }
 
     // Calculate checksum
     {
-        int rsize = (int)(1 << (correctRomSize != 0 ? correctRomSize + 10 : romSize + 10));
-        if (mode == 0x3a) rsize = imageSize;
-
-        // Set up base and mask for "ROM size out of bounds mirroring"
-        uint32_t isize = static_cast<uint32_t>(image.size());
-        uint32_t mask = 1;
-        uint32_t t = isize;
-        while (t >>= 1) {
-            mask <<= 1;
-            mask += 1;
-        }
-        mask >>= 1;
-        uint32_t base = mask + 1;
-        uint32_t offset_mask = isize - base - 1;
-
-        // Add sum
-        int chkloc = headerLocation + 0x2c;
-        uint16_t sum = 0;
-
-        for (int offset = 0; offset < rsize; ++offset) {
-            if (!(offset >= chkloc && offset < chkloc + 4)) {
-                if (offset < isize) {
-                    sum += image[offset];
-                } else {
-                    sum += image[base + (offset & offset_mask)];
-                }
-            }
-        }
-        
-        correctChecksum = sum + 0x1fe;
-        correctComplement = ~correctChecksum;
+        correctedChecksum = calculateChecksum(image);
+        correctedComplement = ~correctedChecksum;
+        if (checksum != correctedChecksum) ++issues;
     }
 
-    if (hasCopierHeader || checksum != correctChecksum || complement != correctComplement ||
-        correctRomSize != 0 || correctMode != 0 || correctTitle == false) hasIssues = true;
-
+    if (issues || hasSevereIssues) hasIssues = true;
 }
 
 
-string sfcRomInfo::description() {
+string sfcRomInfo::description(bool silent) {
     ostringstream os;
     if (valid) {
         os << setfill('0') << hex;
-        // /*
-        os << "ROM info for file \"" << filepath << "\"" << endl << endl;
 
-        os << "  Title       " << title << endl;
-        if (!gameCode.empty()) {
-            os << "  Game code   " << gameCode << endl;
-        }
-        os << "  Maker code  " << makerCode << endl;
-        os << "  Country     0x" << setw(2) << static_cast<uint16_t>(countryCode) << " (" << country << ")" << endl;
-        os << "  Version     " << version << endl;
-        os << endl;
+        if (!silent) {
+            os << "ROM info for file \"" << filepath << "\"" << endl << endl;
 
-        int romSizeKb = (int)(1 << romSize);
-        int imageSizeKb = (int)(imageSize >> 10);
-        if (romSize > 0x0f || romSize < 0x05) {
-            os << "  ROM size    NG! (Actual size " << dec << imageSizeKb << hex << "KB)" << endl;
-        } else {
-            os << "  ROM size    0x" << setw(2) << static_cast<uint16_t>(romSize) << " (" << dec << romSizeKb << hex << "KB";
-            if (romSizeKb != imageSizeKb) {
-                os << ", actual size " << dec << imageSizeKb << hex << "KB)" << endl;
-            } else {
-                os << ")" << endl;
+            uint32_t headerAt = headerLocation + (hasNewFormatHeader ? 0 : 0x10);
+            os << "  Header at   0x" << setw(4) << headerAt << endl;
+            os << "  Title       " << title << endl;
+            if (!gameCode.empty()) {
+                os << "  Game code   " << gameCode << endl;
             }
-        }
-
-        if (ramSize) {
-            os << "  RAM size    0x" << setw(2) << static_cast<uint16_t>(ramSize);
-            os << " (" << dec << (int)(1 << (ramSize)) << hex << "KB)" << endl;
-        }
-
-        os << "  Map mode    0x" << setw(2) << static_cast<uint16_t>(mapper);
-        if (mapperName.empty()) {
+            os << "  Maker code  " << makerCode << endl;
+            os << "  Country     0x" << setw(2) << static_cast<uint16_t>(countryCode) << " (" << country << ")" << endl;
+            os << "  Version     " << version << endl;
             os << endl;
-        } else {
-            os << " (" << mapperName << ")" << endl;
-        }
 
-        os << "  Chipset     0x" << setw(2) << static_cast<uint16_t>(chipset);
-        if (chipsetSubtype) {
-            os << "/" << setw(2) << static_cast<uint16_t>(chipsetSubtype);
-        }
-        if (chipSetInfo.empty()) {
+            int romSizeKb = (int)(1 << romSize);
+            int imageSizeKb = (int)(imageSize >> 10);
+            if (romSize > 0x0f || romSize < 0x05) {
+                os << "  ROM size    BAD! (Actual size " << dec << imageSizeKb << hex << "KB)" << endl;
+            } else {
+                os << "  ROM size    0x" << setw(2) << static_cast<uint16_t>(romSize) << " (" << dec << romSizeKb << hex << "KB";
+                if (romSizeKb != imageSizeKb) {
+                    os << ", actual size " << dec << imageSizeKb << hex << "KB)" << endl;
+                } else {
+                    os << ")" << endl;
+                }
+            }
+
+            if (hasRam) {
+                if (ramSize > 0x0d) {
+                    os << "  RAM size    BAD! (0x" << setw(2) << static_cast<uint16_t>(ramSize) << ")" << endl;
+                } else {
+                    os << "  RAM size    0x" << setw(2) << static_cast<uint16_t>(ramSize);
+                    os << " (" << dec << (int)(1 << (ramSize)) << hex << "KB)" << endl;
+                }
+            }
+
+            if (hasLegalMode) {
+                os << "  Map mode    0x" << setw(2) << static_cast<uint16_t>(mapper);
+                if (mapperName.empty()) {
+                    os << endl;
+                } else {
+                    os << " (" << mapperName << ")" << endl;
+                }
+            } else {
+                os << "  Map mode    BAD! (ROM makeup 0x" << setw(2) << static_cast<uint16_t>(mode) << ")" << endl;
+            }
+
+            os << "  Chipset     0x" << setw(2) << static_cast<uint16_t>(chipset);
+            if (chipsetSubtype) {
+                os << "/" << setw(2) << static_cast<uint16_t>(chipsetSubtype);
+            }
+            if (chipSetInfo.empty()) {
+                os << endl;
+            } else {
+                os << " (" << chipSetInfo << ")" << endl;
+            }
+            
+            os << "  Speed       " << (fast ? "120ns" : "200ns") << endl;
             os << endl;
-        } else {
-            os << " (" << chipSetInfo << ")" << endl;
+            
+            os << "  Checksum    0x" << setw(4) << checksum << endl;
+            os << "  Complement  0x" << setw(4) << complement << endl;
+
+            os << endl;
         }
-
-        os << "  Speed       " << (fast ? "120ns" : "200ns") << endl;
-        os << endl;
-
-
-        os << "  Checksum    0x" << setw(4) << checksum << endl;
-        os << "  Complement  0x" << setw(4) << complement << endl;
-        // */
 
         if (hasIssues) {
-            os << endl << "The following issues was found:" << endl;
+            if (silent) {
+                os << "Issues with \"" << filepath << "\":" << endl;
+            } else {
+                if (hasSevereIssues) {
+                    os << "Severe issues were found:" << endl;
+                } else {
+                    os << "The following issues were found:" << endl;
+                }
+            }
 
-            if (correctTitle == false) {
+            if (hasCorrectTitle == false) {
                 os << "  ROM title contains illegal characters" << endl;
             }
-            if (correctMode != 0) {
-                os << "  ROM makeup should be 0x" << setw(2) << static_cast<uint16_t>(correctMode) << endl;
+            if (!hasLegalMode) {
+                os << "  ROM makeup 0x" << setw(2) << static_cast<uint16_t>(mode) << " is not allowed";
+                os << ", best guess is 0x" << setw(2) << static_cast<uint16_t>(correctedMode) << endl;
+            } else if (!hasKnownMapper) {
+                os << "  ROM makeup 0x" << setw(2) << static_cast<uint16_t>(mode) << " is an unknown type" << endl;
             }
-            if (correctRomSize != 0) {
-                os << "  ROM size should be 0x" << setw(2) << static_cast<uint16_t>(correctRomSize) << endl;
+            if (correctedRomSize && romSize != correctedRomSize) {
+                os << "  ROM size should be 0x" << setw(2) << static_cast<uint16_t>(correctedRomSize) << endl;
             }
-            if (checksum != correctChecksum || complement != correctComplement) {
-                os << "  Checksum/complement should be 0x" << setw(4) << correctChecksum << "/0x" << setw(4) << correctComplement << endl;
+            if (!hasCorrectRamSize) {
+                if (hasRam) {
+                    os << "  RAM size specified too large" << endl;
+                } else {
+                    os << "  RAM size should be 0x00" << endl;
+                }
+            }
+            if (checksum != correctedChecksum || complement != correctedComplement) {
+                os << "  Checksum/complement should be 0x" << setw(4) << correctedChecksum << "/0x" << setw(4) << correctedComplement << endl;
             }
             if (hasCopierHeader) {
                 os << "  File has a copier header (0x200 bytes)" << endl;
             }
+
+            if (!silent) os << endl;
         }
 
     } else {
         os << "File \"" << filepath << "\" is not an SFC ROM image" << endl;
     }
-    os << endl;
     return os.str();
 }
 
 
-bool sfcRomInfo::fix() {
-    if (!valid) return false;
+string sfcRomInfo::fix(const string& path, bool silent) {
+    if (!valid) return string();
+    ostringstream os;
 
-    return valid;
+    int fixedIssues = 0;
+    if (checksum != correctedChecksum || complement != correctedComplement) ++fixedIssues;
+
+    os << "Writing fixed ROM image to file \"" << path << "\"" << endl;
+
+    if (hasCopierHeader) {
+        os << "  Removing copier header" << endl;
+        ++fixedIssues;
+    }
+
+    if (!hasCorrectTitle) {
+        //TODO
+    }
+
+    if (!hasLegalMode) {
+        os << "  Fixing ROM makeup" << endl;
+        image[headerLocation + 0x25] = correctedMode;
+        ++fixedIssues;
+    }
+
+    if (correctedRomSize && romSize != correctedRomSize) {
+        os << "  Fixing ROM size" << endl;
+        image[headerLocation + 0x27] = correctedRomSize;
+        ++fixedIssues;
+    }
+
+    if (fixedIssues) {
+        os << "  Fixing checksum" << endl;
+        correctedChecksum = calculateChecksum(image);
+        correctedComplement = ~correctedChecksum;
+        putWord(image, headerLocation + 0x2c, correctedComplement);
+        putWord(image, headerLocation + 0x2e, correctedChecksum);
+    }
+
+    if (fixedIssues || path != filepath) {
+        ofstream file(path, ios::binary|ios::trunc);
+        if (file && file.good()) {
+            file.write((char*)&image[0], image.size() * sizeof(uint8_t));
+        } else {
+            ostringstream fail;
+            fail << "Cannot open file \"" << path << "\" for writing" << endl;
+            return fail.str();
+        }
+    } else {
+        return string();
+    }
+
+    os << "  Done!" << endl << endl;
+    return os.str();
 }
 
 int sfcRomInfo::scoreHeaderLocation(const vector<uint8_t> &image, int loc) {
@@ -275,9 +354,6 @@ int sfcRomInfo::scoreHeaderLocation(const vector<uint8_t> &image, int loc) {
         score += 2;
     } else {
         score -= 4;
-        //cout << filepath << "\"" << endl;
-        //cout << "BAD reset vector: 0x" << setfill('0') << hex << setw(4) << reset << endl;
-        //cout << "first opcode:     0x" << setfill('0') << hex << setw(2) << static_cast<uint16_t>(op) << endl << endl;
     }
 
     return score;
@@ -299,7 +375,7 @@ void sfcRomInfo::getHeaderInfo(const vector<uint8_t> &header) {
     complement = getWord(header, 0x2c);
     checksum = getWord(header, 0x2e);
 
-    title = string();
+    title = u8"";
     for (int i = 0x10; i < 0x10 + 21; ++i) title += sjisToString(header[i]);
 
     switch (mapper) {
@@ -325,30 +401,33 @@ void sfcRomInfo::getHeaderInfo(const vector<uint8_t> &header) {
     chipSetInfo = string();
     switch (chipset) {
         case 0x00: chipSetInfo = "ROM"; break;
-        case 0x01: chipSetInfo = "ROM/RAM"; break;
-        case 0x02: chipSetInfo = "ROM/RAM/Battery"; break;
+        case 0x01: chipSetInfo = "ROM/RAM"; hasRam = true; break;
+        case 0x02: chipSetInfo = "ROM/RAM/Battery"; hasRam = true; break;
         case 0x03: chipSetInfo = "ROM/DSP"; break;
-        case 0x04: chipSetInfo = "ROM/RAM/DSP"; break;
-        case 0x05: chipSetInfo = "ROM/RAM/Battery/DSP"; break;
+        case 0x04: chipSetInfo = "ROM/RAM/DSP"; hasRam = true; break;
+        case 0x05: chipSetInfo = "ROM/RAM/Battery/DSP"; hasRam = true; break;
         case 0x13: chipSetInfo = "ROM/EXP RAM/MARIO CHIP 1"; break;
-        case 0x25: chipSetInfo = "ROM/RAM/Battery/OBC-1"; break;
-        case 0x32: chipSetInfo = "ROM/RAM/Battery/SA-1"; break;
-        case 0x34: chipSetInfo = "ROM/RAM/SA-1"; break;
-        case 0x35: chipSetInfo = "ROM/RAM/Battery/SA-1"; break;
+        case 0x25: chipSetInfo = "ROM/RAM/Battery/OBC-1"; hasRam = true; break;
+        case 0x32: chipSetInfo = "ROM/RAM/Battery/SA-1"; hasRam = true; break;
+        case 0x34: chipSetInfo = "ROM/RAM/SA-1"; hasRam = true; break;
+        case 0x35: chipSetInfo = "ROM/RAM/Battery/SA-1"; hasRam = true; break;
         case 0x43: chipSetInfo = "ROM/S-DD1"; break;
-        case 0x45: chipSetInfo = "ROM/RAM/Battery/S-DD1"; break;
-        case 0x55: chipSetInfo = "ROM/RAM/Battery/S-RTC"; break;
+        case 0x45: chipSetInfo = "ROM/RAM/Battery/S-DD1"; hasRam = true; break;
+        case 0x55: chipSetInfo = "ROM/RAM/Battery/S-RTC"; hasRam = true; break;
         case 0xe3: chipSetInfo = "ROM/SGB"; break;
         case 0xe5: chipSetInfo = "ROM/BS-X"; break;
 
         case 0x14:
             chipSetInfo = romSize > 0x0a ? "ROM/RAM/GSU-2" : "ROM/RAM/GSU-1";
+            hasRam = true;
             break;
         case 0x15:
             chipSetInfo = romSize > 0x0a ? "ROM/RAM/Battery/GSU-2" : "ROM/RAM/Battery/GSU-1";
+            hasRam = true;
             break;
         case 0x1a:
             chipSetInfo = "ROM/RAM/Battery/GSU-2-SP1";
+            hasRam = true;
             break;
 
         case 0xf3:
@@ -357,19 +436,21 @@ void sfcRomInfo::getHeaderInfo(const vector<uint8_t> &header) {
         case 0xf5:
             if (chipsetSubtype == 0x00) chipSetInfo = "ROM/RAM/Battery/SPC7110";
             if (chipsetSubtype == 0x02) chipSetInfo = "ROM/RAM/Battery/ST-018";
+            hasRam = true;
             break;
         case 0xf6:
             if (chipsetSubtype == 0x01) chipSetInfo = "ROM/Battery/ST-010 or ST-011";
             break;
         case 0xf9:
             if (chipsetSubtype == 0x00) chipSetInfo = "ROM/RAM/Battery/SPC7110/RTC";
+            hasRam = true;
             break;
 
         default: break;
     }
 
-    if (gameCode == "XBND") chipSetInfo = "ROM/RAM/Battery/XBand Modem";
-    if (gameCode == "MENU") chipSetInfo = "ROM/RAM/Battery/MX15001TFC";
+    if (gameCode == "XBND") { chipSetInfo = "ROM/RAM/Battery/XBand Modem"; hasRam = true; }
+    if (gameCode == "MENU") { chipSetInfo = "ROM/RAM/Battery/MX15001TFC"; hasRam = true; }
 
     {
         ostringstream os;
@@ -399,9 +480,47 @@ void sfcRomInfo::getHeaderInfo(const vector<uint8_t> &header) {
     }
 }
 
-// Get little endian word
+uint16_t sfcRomInfo::calculateChecksum(const vector<uint8_t> &image) {
+    int rsize = (int)(1 << (correctedRomSize != 0 ? correctedRomSize + 10 : romSize + 10));
+    if (mode == 0x3a) rsize = imageSize;
+
+    // Set up base and mask for out of bounds mirroring
+    uint32_t isize = static_cast<uint32_t>(image.size());
+    uint32_t mask = 1;
+    uint32_t t = isize;
+    while (t >>= 1) {
+        mask <<= 1;
+        mask += 1;
+    }
+    mask >>= 1;
+    uint32_t base = mask + 1;
+    uint32_t offset_mask = isize - base - 1;
+
+    // Add sum
+    int chkloc = headerLocation + 0x2c;
+    uint16_t sum = 0;
+
+    for (int offset = 0; offset < rsize; ++offset) {
+        if (!(offset >= chkloc && offset < chkloc + 4)) {
+            if (offset < isize) {
+                sum += image[offset];
+            } else {
+                sum += image[base + (offset & offset_mask)];
+            }
+        }
+    }
+    return sum + 0x1fe;
+}
+
+
+// Get/put little endian word
 uint16_t getWord(const vector<uint8_t> &vec, int offset) {
     return (uint16_t)((vec[offset]) + ((uint8_t)(vec[offset+1]) << 8));
+}
+
+void putWord(vector<uint8_t> &vec, int offset, uint16_t value) {
+    vec[offset] = (uint8_t)(value & 0xff);
+    vec[offset+1] = (uint8_t)(value >> 8);
 }
 
 // Opcodes used on reset
@@ -428,28 +547,6 @@ bool validResetOpcode(uint8_t op) {
             return false;
     }
 }
-
-// Opcodes used on reset
-bool validInterruptOpcode(uint8_t op) {
-    switch (op) {
-        case 0x08: // php
-        case 0x18: // clc
-        case 0x40: // rti
-        case 0x48: // pha
-        case 0x5c: // jml abs
-        case 0x6c: // jmp [abs]
-        case 0x78: // sei
-        case 0x8b: // phb
-        case 0xc2: // rep
-        case 0xdc: // jmp [abs long]
-        case 0xe2: // sep
-            return true;
-        default:
-            cout << "NMI 0x" << setfill('0') << setw(2) << hex << static_cast<unsigned int>(op) << endl;
-            return false;
-    }
-}
-
 
 // SJIS subset used in SNES header
 string sjisToString(uint8_t code) {

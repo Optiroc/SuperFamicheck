@@ -15,7 +15,7 @@ bool fileAvailable(const std::string& path) {
 
 int main(int argc, const char * argv[]) {
     ez::ezOptionParser opt;
-    opt.overview = "SuperFamicheck (0.1)";
+    opt.overview = "SuperFamicheck 0.1";
     opt.syntax = "superfamicheck [options...]";
 
     opt.add("",     // Default
@@ -46,6 +46,22 @@ int main(int argc, const char * argv[]) {
             false,  // Required
             0,      // Number of args expected
             0,      // Delimiter if expecting multiple args
+            "Silent operation (unless issues found)",
+            "-s", "--semisilent"
+            );
+
+    opt.add("",     // Default
+            false,  // Required
+            0,      // Number of args expected
+            0,      // Delimiter if expecting multiple args
+            "Silent operation",
+            "-S", "--silent"
+            );
+
+    opt.add("",     // Default
+            false,  // Required
+            0,      // Number of args expected
+            0,      // Delimiter if expecting multiple args
             "Display instructions",
             "-h", "--help");
 
@@ -58,6 +74,9 @@ int main(int argc, const char * argv[]) {
         cout << usage;
         return 0;
     }
+
+    bool silent = opt.isSet("-s");
+    bool verysilent = opt.isSet("-S");
 
     if (!opt.gotRequired(badOptions)) {
         for(int i=0; i < badOptions.size(); ++i) {
@@ -83,16 +102,15 @@ int main(int argc, const char * argv[]) {
     }
 
     sfcRomInfo romInfo(inputPath);
-    cout << romInfo.description();
 
-    if (opt.isSet("-f")) {
-        cout << endl;
-        if (romInfo.fix()) {
-            cout << "Fixed " << romInfo.description();
-        } else {
-            cerr << "Couldn't fix file \"" << inputPath << "\"" << endl;
-            return 1;
-        }
+    if (!verysilent) cout << romInfo.description(silent);
+
+    if (romInfo.valid && opt.isSet("-f")) {
+        string outputPath = inputPath;
+        if (opt.isSet("-o")) opt.get("-o")->getString(outputPath);
+
+        string fixDescripton = romInfo.fix(outputPath, silent);
+        if (!verysilent) cout << fixDescripton;
     }
 
     return 0;
