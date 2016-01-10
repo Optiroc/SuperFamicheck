@@ -1,5 +1,5 @@
 #superfamicheck 0.1
-program by david lindecrantz, optiroc@gmail.com (2016.01.03)  
+program by david lindecrantz, optiroc@gmail.com (2016.01.10)  
 Distributed under the terms of the [MIT license](./LICENSE)
 
 superfamicheck is a simple command line utility that shows (and optionally fixes) header info for super nintendo / super famicom ROM images.
@@ -19,11 +19,11 @@ show info for file rom.sfc:
   
 	superfamicheck rom.sfc
 
-show info for file rom.sfc and fix bad fields (in-place):
+show info for file rom.sfc and fix header (replacing source file):
 
 	superfamicheck rom.sfc -f
 
-show info for file rom.sfc and write fixed fix ROM image to other file:
+show info for file rom.sfc and write fixed ROM image to specified file:
 
 	superfamicheck rom.sfc -o -f fixed.sfc
 
