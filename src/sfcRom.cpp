@@ -1,4 +1,4 @@
-#include "sfcRomInfo.hpp"
+#include "sfcRom.hpp"
 
 #include <cstdint>
 #include <climits>
@@ -18,7 +18,7 @@ string sjisToString(uint8_t code);
 uint16_t getWord(const vector<uint8_t> &vec, int offset);
 void putWord(vector<uint8_t> &vec, int offset, uint16_t value);
 
-sfcRomInfo::sfcRomInfo(const string& path) {
+sfcRom::sfcRom(const string& path) {
     filepath = path;
     int issues = 0;
 
@@ -52,7 +52,7 @@ sfcRomInfo::sfcRomInfo(const string& path) {
 
         for (int loc : possibleHeaderLocations) {
             int score = scoreHeaderLocation(image, loc);
-            if (score > -10) scoredHeaderLocations.emplace_back(score, loc);
+            if (score > -2) scoredHeaderLocations.emplace_back(score, loc);
         }
 
         int top = INT_MIN;
@@ -136,7 +136,7 @@ sfcRomInfo::sfcRomInfo(const string& path) {
 }
 
 
-string sfcRomInfo::description(bool silent) {
+string sfcRom::description(bool silent) {
     ostringstream os;
     if (valid) {
         os << setfill('0') << hex;
@@ -254,7 +254,7 @@ string sfcRomInfo::description(bool silent) {
 }
 
 
-string sfcRomInfo::fix(const string& path, bool silent) {
+string sfcRom::fix(const string& path, bool silent) {
     if (!valid) return string();
     ostringstream os;
 
@@ -309,7 +309,7 @@ string sfcRomInfo::fix(const string& path, bool silent) {
     return os.str();
 }
 
-int sfcRomInfo::scoreHeaderLocation(const vector<uint8_t> &image, int loc) {
+int sfcRom::scoreHeaderLocation(const vector<uint8_t> &image, int loc) {
     if (image.size() < loc + 0x50) return -100;
     int score = 0;
     vector<uint8_t> header = vector<uint8_t>(image.begin() + loc, image.begin() + loc + 0x50);
@@ -359,7 +359,7 @@ int sfcRomInfo::scoreHeaderLocation(const vector<uint8_t> &image, int loc) {
     return score;
 }
 
-void sfcRomInfo::getHeaderInfo(const vector<uint8_t> &header) {
+void sfcRom::getHeaderInfo(const vector<uint8_t> &header) {
     mode = header[0x25];
     mapper = mode & 0x0f;
     fast = mode & 0x10;
@@ -480,7 +480,7 @@ void sfcRomInfo::getHeaderInfo(const vector<uint8_t> &header) {
     }
 }
 
-uint16_t sfcRomInfo::calculateChecksum(const vector<uint8_t> &image) {
+uint16_t sfcRom::calculateChecksum(const vector<uint8_t> &image) {
     int rsize = (int)(1 << (correctedRomSize != 0 ? correctedRomSize + 10 : romSize + 10));
     if (mode == 0x3a) rsize = imageSize;
 

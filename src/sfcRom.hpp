@@ -1,5 +1,5 @@
-#ifndef sfcRomInfo_hpp
-#define sfcRomInfo_hpp
+#ifndef sfcRom_hpp
+#define sfcRom_hpp
 
 #include <cstdint>
 #include <string>
@@ -7,7 +7,7 @@
 
 using namespace std;
 
-struct sfcRomInfo {
+struct sfcRom {
     string filepath;
     vector<uint8_t> image;
     int imageSize;
@@ -54,7 +54,7 @@ struct sfcRomInfo {
     string country;
 
 
-    sfcRomInfo(const string& path);
+    sfcRom(const string& path);
     string description(bool silent);
     string fix(const string& path, bool silent);
 
@@ -64,4 +64,4 @@ private:
     uint16_t calculateChecksum(const vector<uint8_t> &image);
 };
 
-#endif /* sfcRomInfo_hpp */
+#endif /* sfcRom_hpp */

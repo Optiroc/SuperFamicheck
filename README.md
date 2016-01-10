@@ -7,26 +7,25 @@ superfamicheck is a simple command line utility that shows (and optionally fixes
 
 ##operation
 
-	superfamicheck [options...]
+	superfamicheck rom_file [options...]
 
 the following options are available:
 
 	-h, --help      show usage instructions
-	-i, --in FILE   specify file to read
 	-o, --out FILE  specify file to write (if -f)
 	-f, --fix       fix header (checksum/title/size)
 
 show info for file rom.sfc:
   
-	superfamicheck -i rom.sfc
+	superfamicheck rom.sfc
 
 show info for file rom.sfc and fix bad fields (in-place):
 
-	superfamicheck -i rom.sfc -f
+	superfamicheck rom.sfc -f
 
 show info for file rom.sfc and write fixed fix ROM image to other file:
 
-	superfamicheck -i rom.sfc -o fixed.sfc -f
+	superfamicheck rom.sfc -o -f fixed.sfc
 
 	
 ##acknowledgments

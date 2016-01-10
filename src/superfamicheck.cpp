@@ -5,7 +5,7 @@
 #include <iomanip>
 using namespace std;
 
-#include "sfcRomInfo.hpp"
+#include "sfcRom.hpp"
 #include "ezOptionParser/ezOptionParser.hpp"
 
 bool fileAvailable(const std::string& path) {
@@ -16,15 +16,7 @@ bool fileAvailable(const std::string& path) {
 int main(int argc, const char * argv[]) {
     ez::ezOptionParser opt;
     opt.overview = "SuperFamicheck 0.1";
-    opt.syntax = "superfamicheck [options...]";
-
-    opt.add("",     // Default
-            true,   // Required
-            1,      // Number of args expected
-            0,      // Delimiter if expecting multiple args
-            "Input ROM image path",
-            "-i", "--in"
-            );
+    opt.syntax = "superfamicheck rom_file [options...]";
 
     opt.add("",     // Default
             false,  // Required
@@ -86,30 +78,43 @@ int main(int argc, const char * argv[]) {
         return 1;
     }
 
-    if (!opt.gotValid(badOptions, badArgs)) {
+    if (!opt.gotExpected(badOptions)) {
         for(int i=0; i < badOptions.size(); ++i) {
-            cerr << "Unexpected number of arguments for option: " << badOptions[i] << endl << endl;
+            cerr << "Missing argument for option: " << badOptions[i] << endl << endl;
         }
         std::cout << usage;
         return 1;
     }
 
-    string inputPath;
-    opt.get("-i")->getString(inputPath);
-    if (!fileAvailable(inputPath)) {
-        cerr << "Cannot open file \"" << inputPath << "\"" << endl;
+    if (!opt.gotValid(badOptions, badArgs)) {
+        for(int i=0; i < badOptions.size(); ++i) {
+            cerr << "Invalid argument for option: " << badOptions[i] << endl << endl;
+        }
+        std::cout << usage;
         return 1;
     }
 
-    sfcRomInfo romInfo(inputPath);
+    string inputPath = string();
+    if (opt.firstArgs.size() > 1 || opt.lastArgs.size() > 0) {
+        inputPath = opt.firstArgs.size() > 1 ? *opt.firstArgs.back() : *opt.lastArgs.front();
+        if (!fileAvailable(inputPath)) {
+            cerr << "Cannot open file \"" << inputPath << "\"" << endl;
+            return 1;
+        }
+    } else {
+        cerr << "No input file specified" << endl;
+        return 1;
+    }
 
-    if (!verysilent) cout << romInfo.description(silent);
+    sfcRom rom(inputPath);
 
-    if (romInfo.valid && opt.isSet("-f")) {
+    if (!verysilent) cout << rom.description(silent);
+
+    if (rom.valid && opt.isSet("-f")) {
         string outputPath = inputPath;
         if (opt.isSet("-o")) opt.get("-o")->getString(outputPath);
 
-        string fixDescripton = romInfo.fix(outputPath, silent);
+        string fixDescripton = rom.fix(outputPath, silent);
         if (!verysilent) cout << fixDescripton;
     }
 

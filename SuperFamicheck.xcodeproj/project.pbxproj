@@ -8,7 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		2A2D4EFE1C329F2300359254 /* superfamicheck.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2A2D4EFD1C329F2300359254 /* superfamicheck.cpp */; };
-		2A8DDD221C372AE900092AD8 /* sfcRomInfo.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2A8DDD201C372AE900092AD8 /* sfcRomInfo.cpp */; };
+		2A8DDD221C372AE900092AD8 /* sfcRom.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2A8DDD201C372AE900092AD8 /* sfcRom.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -27,8 +27,8 @@
 		2A2D4EFA1C329F2300359254 /* superfamicheck */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = superfamicheck; sourceTree = BUILT_PRODUCTS_DIR; };
 		2A2D4EFD1C329F2300359254 /* superfamicheck.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = superfamicheck.cpp; sourceTree = "<group>"; };
 		2A8AC1461C33F5A200E80F5A /* ezOptionParser.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = ezOptionParser.hpp; sourceTree = "<group>"; };
-		2A8DDD201C372AE900092AD8 /* sfcRomInfo.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = sfcRomInfo.cpp; sourceTree = "<group>"; };
-		2A8DDD211C372AE900092AD8 /* sfcRomInfo.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = sfcRomInfo.hpp; sourceTree = "<group>"; };
+		2A8DDD201C372AE900092AD8 /* sfcRom.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = sfcRom.cpp; sourceTree = "<group>"; };
+		2A8DDD211C372AE900092AD8 /* sfcRom.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = sfcRom.hpp; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -62,8 +62,8 @@
 			isa = PBXGroup;
 			children = (
 				2A2D4EFD1C329F2300359254 /* superfamicheck.cpp */,
-				2A8DDD211C372AE900092AD8 /* sfcRomInfo.hpp */,
-				2A8DDD201C372AE900092AD8 /* sfcRomInfo.cpp */,
+				2A8DDD211C372AE900092AD8 /* sfcRom.hpp */,
+				2A8DDD201C372AE900092AD8 /* sfcRom.cpp */,
 				2A8AC1451C33F5A200E80F5A /* ezOptionParser */,
 			);
 			path = src;
@@ -134,7 +134,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				2A2D4EFE1C329F2300359254 /* superfamicheck.cpp in Sources */,
-				2A8DDD221C372AE900092AD8 /* sfcRomInfo.cpp in Sources */,
+				2A8DDD221C372AE900092AD8 /* sfcRom.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
