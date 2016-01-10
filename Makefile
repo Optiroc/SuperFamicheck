@@ -4,7 +4,7 @@ LD_FLAGS    :=
 SRC_DIR     := src
 BUILD_DIR   := build
 OBJ_DIR     := $(BUILD_DIR)/o
-BINARY      := $(BUILD_DIR)/superfamicheck
+BINARY      := superfamicheck
 
 rwildcard   = $(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2) $(filter $(subst *,%,$2),$d))
 

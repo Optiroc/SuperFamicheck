@@ -15,7 +15,7 @@ bool fileAvailable(const std::string& path) {
 
 int main(int argc, const char * argv[]) {
     ez::ezOptionParser opt;
-    opt.overview = "SuperFamicheck 0.1";
+    opt.overview = "SuperFamicheck 0.2";
     opt.syntax = "superfamicheck rom_file [options...]";
 
     opt.add("",     // Default
@@ -102,7 +102,8 @@ int main(int argc, const char * argv[]) {
             return 1;
         }
     } else {
-        cerr << "No input file specified" << endl;
+        cerr << "Missing required argument: rom_file" << endl << endl;
+        std::cout << usage;
         return 1;
     }
 
