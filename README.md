@@ -1,6 +1,6 @@
 #superfamicheck 0.2
 program by david lindecrantz, optiroc@gmail.com (2016.01.10)  
-Distributed under the terms of the [MIT license](./LICENSE)
+Distributed under the terms of the [MIT license](./MIT-LICENSE)
 
 superfamicheck is a simple command line utility that shows (and optionally fixes) header info for super nintendo / super famicom ROM images.
 
