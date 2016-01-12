@@ -261,10 +261,10 @@ string sfcRom::fix(const string& path, bool silent) {
     int fixedIssues = 0;
     if (checksum != correctedChecksum || complement != correctedComplement) ++fixedIssues;
 
-    os << "Writing fixed ROM image to file \"" << path << "\"" << endl;
+    os << "Writing ROM image to file \"" << path << "\"" << endl;
 
     if (hasCopierHeader) {
-        os << "  Removing copier header" << endl;
+        os << "  Removed copier header" << endl;
         ++fixedIssues;
     }
 
@@ -273,19 +273,19 @@ string sfcRom::fix(const string& path, bool silent) {
     }
 
     if (!hasLegalMode) {
-        os << "  Fixing ROM makeup" << endl;
+        os << "  Fixed ROM makeup" << endl;
         image[headerLocation + 0x25] = correctedMode;
         ++fixedIssues;
     }
 
     if (correctedRomSize && romSize != correctedRomSize) {
-        os << "  Fixing ROM size" << endl;
+        os << "  Fixed ROM size" << endl;
         image[headerLocation + 0x27] = correctedRomSize;
         ++fixedIssues;
     }
 
     if (fixedIssues) {
-        os << "  Fixing checksum" << endl;
+        os << "  Fixed checksum" << endl;
         correctedChecksum = calculateChecksum(image);
         correctedComplement = ~correctedChecksum;
         putWord(image, headerLocation + 0x2c, correctedComplement);
@@ -305,7 +305,7 @@ string sfcRom::fix(const string& path, bool silent) {
         return string();
     }
 
-    os << "  Done!" << endl << endl;
+    os << endl;
     return os.str();
 }
 
