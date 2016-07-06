@@ -72,7 +72,7 @@ int main(int argc, const char * argv[]) {
 
     if (!opt.gotRequired(badOptions)) {
         for(int i=0; i < badOptions.size(); ++i) {
-            cerr << "Missing required option: " << badOptions[i] << endl << endl;
+            cerr << "Missing required option: " << badOptions[i] << '\n' << '\n';
         }
         std::cout << usage;
         return 1;
@@ -80,7 +80,7 @@ int main(int argc, const char * argv[]) {
 
     if (!opt.gotExpected(badOptions)) {
         for(int i=0; i < badOptions.size(); ++i) {
-            cerr << "Missing argument for option: " << badOptions[i] << endl << endl;
+            cerr << "Missing argument for option: " << badOptions[i] << '\n' << '\n';
         }
         std::cout << usage;
         return 1;
@@ -88,7 +88,7 @@ int main(int argc, const char * argv[]) {
 
     if (!opt.gotValid(badOptions, badArgs)) {
         for(int i=0; i < badOptions.size(); ++i) {
-            cerr << "Invalid argument for option: " << badOptions[i] << endl << endl;
+            cerr << "Invalid argument for option: " << badOptions[i] << '\n' << '\n';
         }
         std::cout << usage;
         return 1;
@@ -98,11 +98,11 @@ int main(int argc, const char * argv[]) {
     if (opt.firstArgs.size() > 1 || opt.lastArgs.size() > 0) {
         inputPath = opt.firstArgs.size() > 1 ? *opt.firstArgs.back() : *opt.lastArgs.front();
         if (!fileAvailable(inputPath)) {
-            cerr << "Cannot open file \"" << inputPath << "\"" << endl;
+            cerr << "Cannot open file \"" << inputPath << "\"" << '\n';
             return 1;
         }
     } else {
-        cerr << "Missing required argument: rom_file" << endl << endl;
+        cerr << "Missing required argument: rom_file" << '\n' << '\n';
         std::cout << usage;
         return 1;
     }

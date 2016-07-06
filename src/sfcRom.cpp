@@ -142,50 +142,50 @@ string sfcRom::description(bool silent) {
         os << setfill('0') << hex;
 
         if (!silent) {
-            os << "ROM info for file \"" << filepath << "\"" << endl << endl;
+            os << "ROM info for file \"" << filepath << "\"" << '\n' << '\n';
 
             uint32_t headerAt = headerLocation + (hasNewFormatHeader ? 0 : 0x10);
-            os << "  Header at   0x" << setw(4) << headerAt << endl;
-            os << "  Title       " << title << endl;
+            os << "  Header at   0x" << setw(4) << headerAt << '\n';
+            os << "  Title       " << title << '\n';
             if (!gameCode.empty()) {
-                os << "  Game code   " << gameCode << endl;
+                os << "  Game code   " << gameCode << '\n';
             }
-            os << "  Maker code  " << makerCode << endl;
-            os << "  Country     0x" << setw(2) << static_cast<uint16_t>(countryCode) << " (" << country << ")" << endl;
-            os << "  Version     " << version << endl;
-            os << endl;
+            os << "  Maker code  " << makerCode << '\n';
+            os << "  Country     0x" << setw(2) << static_cast<uint16_t>(countryCode) << " (" << country << ")" << '\n';
+            os << "  Version     " << version << '\n';
+            os << '\n';
 
             int romSizeKb = (int)(1 << romSize);
             int imageSizeKb = (int)(imageSize >> 10);
             if (romSize > 0x0f || romSize < 0x05) {
-                os << "  ROM size    BAD! (Actual size " << dec << imageSizeKb << hex << "KB)" << endl;
+                os << "  ROM size    BAD! (Actual size " << dec << imageSizeKb << hex << "KB)" << '\n';
             } else {
                 os << "  ROM size    0x" << setw(2) << static_cast<uint16_t>(romSize) << " (" << dec << romSizeKb << hex << "KB";
                 if (romSizeKb != imageSizeKb) {
-                    os << ", actual size " << dec << imageSizeKb << hex << "KB)" << endl;
+                    os << ", actual size " << dec << imageSizeKb << hex << "KB)" << '\n';
                 } else {
-                    os << ")" << endl;
+                    os << ")" << '\n';
                 }
             }
 
             if (hasRam) {
                 if (ramSize > 0x0d) {
-                    os << "  RAM size    BAD! (0x" << setw(2) << static_cast<uint16_t>(ramSize) << ")" << endl;
+                    os << "  RAM size    BAD! (0x" << setw(2) << static_cast<uint16_t>(ramSize) << ")" << '\n';
                 } else {
                     os << "  RAM size    0x" << setw(2) << static_cast<uint16_t>(ramSize);
-                    os << " (" << dec << (int)(1 << (ramSize)) << hex << "KB)" << endl;
+                    os << " (" << dec << (int)(1 << (ramSize)) << hex << "KB)" << '\n';
                 }
             }
 
             if (hasLegalMode) {
                 os << "  Map mode    0x" << setw(2) << static_cast<uint16_t>(mapper);
                 if (mapperName.empty()) {
-                    os << endl;
+                    os << '\n';
                 } else {
-                    os << " (" << mapperName << ")" << endl;
+                    os << " (" << mapperName << ")" << '\n';
                 }
             } else {
-                os << "  Map mode    BAD! (ROM makeup 0x" << setw(2) << static_cast<uint16_t>(mode) << ")" << endl;
+                os << "  Map mode    BAD! (ROM makeup 0x" << setw(2) << static_cast<uint16_t>(mode) << ")" << '\n';
             }
 
             os << "  Chipset     0x" << setw(2) << static_cast<uint16_t>(chipset);
@@ -193,62 +193,62 @@ string sfcRom::description(bool silent) {
                 os << "/" << setw(2) << static_cast<uint16_t>(chipsetSubtype);
             }
             if (chipSetInfo.empty()) {
-                os << endl;
+                os << '\n';
             } else {
-                os << " (" << chipSetInfo << ")" << endl;
+                os << " (" << chipSetInfo << ")" << '\n';
             }
-            
-            os << "  Speed       " << (fast ? "120ns" : "200ns") << endl;
-            os << endl;
-            
-            os << "  Checksum    0x" << setw(4) << checksum << endl;
-            os << "  Complement  0x" << setw(4) << complement << endl;
 
-            os << endl;
+            os << "  Speed       " << (fast ? "120ns" : "200ns") << '\n';
+            os << '\n';
+
+            os << "  Checksum    0x" << setw(4) << checksum << '\n';
+            os << "  Complement  0x" << setw(4) << complement << '\n';
+
+            os << '\n';
         }
 
         if (hasIssues) {
             if (silent) {
-                os << "Issues with \"" << filepath << "\":" << endl;
+                os << "Issues with \"" << filepath << "\":" << '\n';
             } else {
                 if (hasSevereIssues) {
-                    os << "Severe issues were found:" << endl;
+                    os << "Severe issues were found:" << '\n';
                 } else {
-                    os << "The following issues were found:" << endl;
+                    os << "The following issues were found:" << '\n';
                 }
             }
 
             if (hasCorrectTitle == false) {
-                os << "  ROM title contains illegal characters" << endl;
+                os << "  ROM title contains illegal characters" << '\n';
             }
             if (!hasLegalMode) {
                 os << "  ROM makeup 0x" << setw(2) << static_cast<uint16_t>(mode) << " is not allowed";
-                os << ", best guess is 0x" << setw(2) << static_cast<uint16_t>(correctedMode) << endl;
+                os << ", best guess is 0x" << setw(2) << static_cast<uint16_t>(correctedMode) << '\n';
             } else if (!hasKnownMapper) {
-                os << "  ROM makeup 0x" << setw(2) << static_cast<uint16_t>(mode) << " is an unknown type" << endl;
+                os << "  ROM makeup 0x" << setw(2) << static_cast<uint16_t>(mode) << " is an unknown type" << '\n';
             }
             if (correctedRomSize && romSize != correctedRomSize) {
-                os << "  ROM size should be 0x" << setw(2) << static_cast<uint16_t>(correctedRomSize) << endl;
+                os << "  ROM size should be 0x" << setw(2) << static_cast<uint16_t>(correctedRomSize) << '\n';
             }
             if (!hasCorrectRamSize) {
                 if (hasRam) {
-                    os << "  RAM size specified too large" << endl;
+                    os << "  RAM size specified too large" << '\n';
                 } else {
-                    os << "  RAM size should be 0x00" << endl;
+                    os << "  RAM size should be 0x00" << '\n';
                 }
             }
             if (checksum != correctedChecksum || complement != correctedComplement) {
-                os << "  Checksum/complement should be 0x" << setw(4) << correctedChecksum << "/0x" << setw(4) << correctedComplement << endl;
+                os << "  Checksum/complement should be 0x" << setw(4) << correctedChecksum << "/0x" << setw(4) << correctedComplement << '\n';
             }
             if (hasCopierHeader) {
-                os << "  File has a copier header (0x200 bytes)" << endl;
+                os << "  File has a copier header (0x200 bytes)" << '\n';
             }
 
-            if (!silent) os << endl;
+            if (!silent) os << '\n';
         }
 
     } else {
-        os << "File \"" << filepath << "\" is not an SFC ROM image" << endl;
+        os << "File \"" << filepath << "\" is not an SFC ROM image" << '\n';
     }
     return os.str();
 }
@@ -261,10 +261,10 @@ string sfcRom::fix(const string& path, bool silent) {
     int fixedIssues = 0;
     if (checksum != correctedChecksum || complement != correctedComplement) ++fixedIssues;
 
-    os << "Writing ROM image to file \"" << path << "\"" << endl;
+    os << "Writing ROM image to file \"" << path << "\"" << '\n';
 
     if (hasCopierHeader) {
-        os << "  Removed copier header" << endl;
+        os << "  Removed copier header" << '\n';
         ++fixedIssues;
     }
 
@@ -273,19 +273,19 @@ string sfcRom::fix(const string& path, bool silent) {
     }
 
     if (!hasLegalMode) {
-        os << "  Fixed ROM makeup" << endl;
+        os << "  Fixed ROM makeup" << '\n';
         image[headerLocation + 0x25] = correctedMode;
         ++fixedIssues;
     }
 
     if (correctedRomSize && romSize != correctedRomSize) {
-        os << "  Fixed ROM size" << endl;
+        os << "  Fixed ROM size" << '\n';
         image[headerLocation + 0x27] = correctedRomSize;
         ++fixedIssues;
     }
 
     if (fixedIssues) {
-        os << "  Fixed checksum" << endl;
+        os << "  Fixed checksum" << '\n';
         correctedChecksum = calculateChecksum(image);
         correctedComplement = ~correctedChecksum;
         putWord(image, headerLocation + 0x2c, correctedComplement);
@@ -298,14 +298,14 @@ string sfcRom::fix(const string& path, bool silent) {
             file.write((char*)&image[0], image.size() * sizeof(uint8_t));
         } else {
             ostringstream fail;
-            fail << "Cannot open file \"" << path << "\" for writing" << endl;
+            fail << "Cannot open file \"" << path << "\" for writing" << '\n';
             return fail.str();
         }
     } else {
         return string();
     }
 
-    os << endl;
+    os << '\n';
     return os.str();
 }
 
