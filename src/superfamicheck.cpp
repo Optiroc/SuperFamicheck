@@ -3,10 +3,11 @@
 #include <sstream>
 #include <fstream>
 #include <iomanip>
-using namespace std;
 
 #include "sfcRom.hpp"
 #include "ezOptionParser/ezOptionParser.hpp"
+
+using namespace std;
 
 bool fileAvailable(const std::string& path) {
     ifstream file(path, ios::in);
@@ -109,9 +110,11 @@ int main(int argc, const char * argv[]) {
 
     sfcRom rom(inputPath);
 
-    if (!verysilent) cout << rom.description(silent);
+    if (!verysilent) {
+        cout << rom.description(silent);
+    }
 
-    if (rom.valid && opt.isSet("-f")) {
+    if (rom.isValid() && opt.isSet("-f")) {
         string outputPath = inputPath;
         if (opt.isSet("-o")) opt.get("-o")->getString(outputPath);
 

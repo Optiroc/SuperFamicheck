@@ -51,7 +51,7 @@ sfcRom::sfcRom(const string& path) {
         vector<pair<int, unsigned int>> scoredHeaderLocations = {};
 
         for (int loc : possibleHeaderLocations) {
-            int score = scoreHeaderLocation(image, loc);
+            int score = scoreHeaderLocation(loc);
             if (score > -2) scoredHeaderLocations.emplace_back(score, loc);
         }
 
@@ -127,7 +127,7 @@ sfcRom::sfcRom(const string& path) {
 
     // Calculate checksum
     {
-        correctedChecksum = calculateChecksum(image);
+        correctedChecksum = calculateChecksum();
         correctedComplement = ~correctedChecksum;
         if (checksum != correctedChecksum) ++issues;
     }
@@ -136,7 +136,11 @@ sfcRom::sfcRom(const string& path) {
 }
 
 
-string sfcRom::description(bool silent) {
+bool sfcRom::isValid() const {
+    return valid;
+}
+
+string sfcRom::description(bool silent) const {
     ostringstream os;
     if (valid) {
         os << setfill('0') << hex;
@@ -286,7 +290,7 @@ string sfcRom::fix(const string& path, bool silent) {
 
     if (fixedIssues) {
         os << "  Fixed checksum" << '\n';
-        correctedChecksum = calculateChecksum(image);
+        correctedChecksum = calculateChecksum();
         correctedComplement = ~correctedChecksum;
         putWord(image, headerLocation + 0x2c, correctedComplement);
         putWord(image, headerLocation + 0x2e, correctedChecksum);
@@ -309,7 +313,7 @@ string sfcRom::fix(const string& path, bool silent) {
     return os.str();
 }
 
-int sfcRom::scoreHeaderLocation(const vector<uint8_t> &image, int loc) {
+int sfcRom::scoreHeaderLocation(int loc) const {
     if (image.size() < loc + 0x50) return -100;
     int score = 0;
     vector<uint8_t> header = vector<uint8_t>(image.begin() + loc, image.begin() + loc + 0x50);
@@ -327,9 +331,10 @@ int sfcRom::scoreHeaderLocation(const vector<uint8_t> &image, int loc) {
 
     // Correct rom makeup byte?
     {
-        uint8_t mode = header[0x25];
-        uint8_t mapper = mode & 0x0f;
-        if (((mode & 0xe0) == 0x20) && (mapper == 0x0 || mapper == 0x1 || mapper == 0x2 || mapper == 0x3 || mapper == 0x5 || mapper == 0xa)) {
+        uint8_t s_mode = header[0x25];
+        uint8_t s_mapper = mode & 0x0f;
+        if (((s_mode & 0xe0) == 0x20) &&
+            (s_mapper == 0x0 || s_mapper == 0x1 || s_mapper == 0x2 || s_mapper == 0x3 || s_mapper == 0x5 || s_mapper == 0xa)) {
             score += 2;
         }
     }
@@ -480,7 +485,7 @@ void sfcRom::getHeaderInfo(const vector<uint8_t> &header) {
     }
 }
 
-uint16_t sfcRom::calculateChecksum(const vector<uint8_t> &image) {
+uint16_t sfcRom::calculateChecksum() const {
     int rsize = (int)(1 << (correctedRomSize != 0 ? correctedRomSize + 10 : romSize + 10));
     if (mode == 0x3a) rsize = imageSize;
 
