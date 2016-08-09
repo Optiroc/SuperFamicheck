@@ -2,9 +2,9 @@ CXX_FLAGS   := -std=c++11 -Os -Wall
 CC_FLAGS    := -c -Os -Wall
 LD_FLAGS    :=
 SRC_DIR     := src
-BUILD_DIR   := build
-OBJ_DIR     := $(BUILD_DIR)/o
-BINARY      := superfamicheck
+OBJ_DIR     := .build
+BIN_DIR     := bin
+BINARY      := $(BIN_DIR)/superfamicheck
 
 rwildcard   = $(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2) $(filter $(subst *,%,$2),$d))
 
@@ -13,12 +13,12 @@ OBJ         := $(patsubst $(SRC_DIR)%,$(OBJ_DIR)%,$(patsubst %.cpp,%.o,$(SRC)))
 
 .PHONY: clean
 
-all : $(BINARY)
+default: $(BINARY)
 
-clean:
-	rm -f $(BINARY) $(OBJ)
+all: clean $(BINARY)
 
 $(BINARY) : $(OBJ)
+	@mkdir -pv $(dir $@)
 	g++ -v $(LD_FLAGS) $^ -o $@
 
 $(OBJ_DIR)/%.o : $(SRC_DIR)/%.cpp
@@ -28,3 +28,6 @@ $(OBJ_DIR)/%.o : $(SRC_DIR)/%.cpp
 $(OBJ_DIR)/%.o : $(SRC_DIR)/%.c
 	@mkdir -pv $(dir $@)
 	gcc $(CC_FLAGS) -c $< -o $@
+
+clean:
+	@rm -rf $(BIN_DIR) $(OBJ_DIR)

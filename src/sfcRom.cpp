@@ -14,7 +14,6 @@ using namespace std;
 bool validResetOpcode(uint8_t op);
 bool validInterruptOpcode(uint8_t op);
 string sjisToString(uint8_t code);
-
 uint16_t getWord(const vector<uint8_t> &vec, int offset);
 void putWord(vector<uint8_t> &vec, int offset, uint16_t value);
 

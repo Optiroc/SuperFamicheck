@@ -5,3 +5,4 @@ SuperFamicheck.xcodeproj/project.xcworkspace/xcuserdata/optiroc.xcuserdatad
 test.sh
 test_c
 superfamicheck
+.build
