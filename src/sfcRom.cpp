@@ -398,77 +398,86 @@ void sfcRom::getHeaderInfo(const vector<uint8_t>& header) {
   switch (chipset) {
   case 0x00: chipSetInfo = "ROM"; break;
   case 0x01:
-    chipSetInfo = "ROM/RAM";
+    chipSetInfo = "ROM, RAM";
     hasRam = true;
     break;
   case 0x02:
-    chipSetInfo = "ROM/RAM/Battery";
+    chipSetInfo = "ROM, RAM, Battery";
     hasRam = true;
     break;
-  case 0x03: chipSetInfo = "ROM/DSP"; break;
+  case 0x03: chipSetInfo = "ROM, DSP"; break;
   case 0x04:
-    chipSetInfo = "ROM/RAM/DSP";
+    chipSetInfo = "ROM, RAM, DSP";
     hasRam = true;
     break;
   case 0x05:
-    chipSetInfo = "ROM/RAM/Battery/DSP";
+    chipSetInfo = "ROM, RAM, DSP, Battery";
     hasRam = true;
     break;
-  case 0x13: chipSetInfo = "ROM/EXP RAM/MARIO CHIP 1"; break;
+  case 0x13: chipSetInfo = "ROM, EXPRAM, MARIO CHIP 1"; break;
   case 0x25:
-    chipSetInfo = "ROM/RAM/Battery/OBC-1";
+    chipSetInfo = "ROM, RAM, OBC-1, Battery";
     hasRam = true;
     break;
   case 0x32:
-    chipSetInfo = "ROM/RAM/Battery/SA-1";
+    chipSetInfo = "ROM, RAM, SA-1, Battery";
     hasRam = true;
     break;
   case 0x34:
-    chipSetInfo = "ROM/RAM/SA-1";
+    chipSetInfo = "ROM, RAM, SA-1";
     hasRam = true;
     break;
   case 0x35:
-    chipSetInfo = "ROM/RAM/Battery/SA-1";
+    chipSetInfo = "ROM, RAM, SA-1, Battery";
     hasRam = true;
     break;
-  case 0x43: chipSetInfo = "ROM/S-DD1"; break;
+  case 0x36:
+    chipSetInfo = "ROM, SA-1, Battery";
+    break;
+  case 0x43:
+    chipSetInfo = "ROM, S-DD1";
+    break;
   case 0x45:
-    chipSetInfo = "ROM/RAM/Battery/S-DD1";
+    chipSetInfo = "ROM, RAM, S-DD1, Battery";
     hasRam = true;
     break;
   case 0x55:
-    chipSetInfo = "ROM/RAM/Battery/S-RTC";
+    chipSetInfo = "ROM, RAM, S-RTC, Battery";
     hasRam = true;
     break;
-  case 0xe3: chipSetInfo = "ROM/SGB"; break;
-  case 0xe5: chipSetInfo = "ROM/BS-X"; break;
+  case 0xe3:
+    chipSetInfo = "ROM, SGB";
+    break;
+  case 0xe5:
+    chipSetInfo = "ROM, BS-X";
+    break;
 
   case 0x14:
-    chipSetInfo = romSize > 0x0a ? "ROM/RAM/GSU-2" : "ROM/RAM/GSU-1";
+    chipSetInfo = romSize > 0x0a ? "ROM, RAM, GSU-2" : "ROM, RAM, GSU-1";
     hasRam = true;
     break;
   case 0x15:
-    chipSetInfo = romSize > 0x0a ? "ROM/RAM/Battery/GSU-2" : "ROM/RAM/Battery/GSU-1";
+    chipSetInfo = romSize > 0x0a ? "ROM, RAM, GSU-2, Battery" : "ROM, RAM, GSU-1, Battery";
     hasRam = true;
     break;
   case 0x1a:
-    chipSetInfo = "ROM/RAM/Battery/GSU-2-SP1";
+    chipSetInfo = "ROM, RAM, GSU-2-SP1, Battery";
     hasRam = true;
     break;
 
   case 0xf3:
-    if (chipsetSubtype == 0x10) chipSetInfo = "ROM/CX4";
+    if (chipsetSubtype == 0x10) chipSetInfo = "ROM, CX4";
     break;
   case 0xf5:
-    if (chipsetSubtype == 0x00) chipSetInfo = "ROM/RAM/Battery/SPC7110";
-    if (chipsetSubtype == 0x02) chipSetInfo = "ROM/RAM/Battery/ST-018";
+    if (chipsetSubtype == 0x00) chipSetInfo = "ROM, RAM, SPC7110, Battery";
+    if (chipsetSubtype == 0x02) chipSetInfo = "ROM, RAM, ST-018, Battery";
     hasRam = true;
     break;
   case 0xf6:
-    if (chipsetSubtype == 0x01) chipSetInfo = "ROM/Battery/ST-010 or ST-011";
+    if (chipsetSubtype == 0x01) chipSetInfo = "ROM, ST-010/011, Battery";
     break;
   case 0xf9:
-    if (chipsetSubtype == 0x00) chipSetInfo = "ROM/RAM/Battery/SPC7110/RTC";
+    if (chipsetSubtype == 0x00) chipSetInfo = "ROM, RAM, SPC7110, RTC, Battery";
     hasRam = true;
     break;
 
@@ -477,11 +486,11 @@ void sfcRom::getHeaderInfo(const vector<uint8_t>& header) {
   }
 
   if (gameCode == "XBND") {
-    chipSetInfo = "ROM/RAM/Battery/XBand Modem";
+    chipSetInfo = "ROM, RAM, Battery, XBand Modem";
     hasRam = true;
   }
   if (gameCode == "MENU") {
-    chipSetInfo = "ROM/RAM/Battery/MX15001TFC";
+    chipSetInfo = "ROM, RAM, Battery, MX15001TFC";
     hasRam = true;
   }
 
