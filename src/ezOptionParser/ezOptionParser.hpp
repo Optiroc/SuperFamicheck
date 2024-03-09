@@ -15,6 +15,7 @@ v0.2.0 20121120 Added parseIndex to OptionGroup.
 v0.2.1 20130506 Allow disabling doublespace of OPTIONS usage descriptions.
 v0.2.2 20140504 Jose Santiago added compiler warning fixes.
                 Bruce Shankle added a crash fix in description printing.
+       20240309 David Lindcrantz replaced sprintf usage with snprintf.
 */
 #ifndef EZ_OPTION_PARSER_H
 #define EZ_OPTION_PARSER_H
@@ -2076,12 +2077,13 @@ void ezOptionParser::parse(int argc, const char * argv[]) {
 };
 /* ################################################################### */
 void ezOptionParser::prettyPrint(std::string & out) {
-  char tmp[256];
+  const size_t BUF_SIZE = 1024;
+  char tmp[BUF_SIZE];
   int i,j,k;
 
   out += "First Args:\n";
   for(i=0; i < (long int)firstArgs.size(); ++i) {
-    sprintf(tmp, "%d: %s\n", i+1, firstArgs[i]->c_str());
+    snprintf(tmp, BUF_SIZE, "%d: %s\n", i+1, firstArgs[i]->c_str());
     out += tmp;
   }
 
@@ -2102,46 +2104,46 @@ void ezOptionParser::prettyPrint(std::string & out) {
     out += "\n";
     // The flag names:
     for(j=0; j < (long int)g->flags.size()-1; ++j) {
-      sprintf(tmp, "%s, ", g->flags[j]->c_str());
+      snprintf(tmp, BUF_SIZE, "%s, ", g->flags[j]->c_str());
       out += tmp;
     }
-    sprintf(tmp, "%s:\n", g->flags.back()->c_str());
+    snprintf(tmp, BUF_SIZE, "%s:\n", g->flags.back()->c_str());
     out += tmp;
 
     if (g->isSet) {
       if (g->expectArgs) {
         if (g->args.empty()) {
-          sprintf(tmp, "%s (default)\n", g->defaults.c_str());
+          snprintf(tmp, BUF_SIZE, "%s (default)\n", g->defaults.c_str());
           out += tmp;
         } else {
           for(k=0; k < (long int)g->args.size(); ++k) {
             for(j=0; j < (long int)g->args[k]->size()-1; ++j) {
-              sprintf(tmp, "%s%c", g->args[k]->at(j)->c_str(), g->delim);
+              snprintf(tmp, BUF_SIZE, "%s%c", g->args[k]->at(j)->c_str(), g->delim);
               out += tmp;
             }
-            sprintf(tmp, "%s\n", g->args[k]->back()->c_str());
+            snprintf(tmp, BUF_SIZE, "%s\n", g->args[k]->back()->c_str());
             out += tmp;
           }
         }
       } else { // Set but no args expected.
-        sprintf(tmp, "Set\n");
+        snprintf(tmp, BUF_SIZE, "Set\n");
         out += tmp;
       }
     } else {
-      sprintf(tmp, "Not set\n");
+      snprintf(tmp, BUF_SIZE, "Not set\n");
       out += tmp;
     }
   }
 
   out += "\nLast Args:\n";
   for(i=0; i < (long int)lastArgs.size(); ++i) {
-    sprintf(tmp, "%d: %s\n", i+1, lastArgs[i]->c_str());
+    snprintf(tmp, BUF_SIZE, "%d: %s\n", i+1, lastArgs[i]->c_str());
     out += tmp;
   }
 
   out += "\nUnknown Args:\n";
   for(i=0; i < (long int)unknownArgs.size(); ++i) {
-    sprintf(tmp, "%d: %s\n", i+1, unknownArgs[i]->c_str());
+    snprintf(tmp, BUF_SIZE, "%d: %s\n", i+1, unknownArgs[i]->c_str());
     out += tmp;
   }
 };

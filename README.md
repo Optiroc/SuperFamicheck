@@ -5,8 +5,7 @@ superfamicheck is programmed by David Lindecrantz and distributed under the term
 
 
 ## building
-
-provided you have a decent command line interface, (gnu)make and a c++11 capable compiler: simply run `make`.
+in a unix-like environment simply `make` the binary. on windows use cmake to generate a build environment.
 
 ## operation
 

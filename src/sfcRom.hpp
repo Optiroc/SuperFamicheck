@@ -16,12 +16,12 @@ private:
   std::vector<uint8_t> image;
 
   void getHeaderInfo(const std::vector<uint8_t>& header);
-  int scoreHeaderLocation(int location) const;
+  int scoreHeaderLocation(size_t location) const;
   uint16_t calculateChecksum() const;
 
-  int imageSize;
-  int imageOffset = 0;
-  int headerLocation;
+  size_t imageSize;
+  size_t imageOffset = 0;
+  size_t headerLocation;
 
   bool valid = false;
   bool hasIssues = false;

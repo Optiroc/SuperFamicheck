@@ -1,7 +1,5 @@
 #include <fstream>
-#include <iomanip>
 #include <iostream>
-#include <sstream>
 #include <string>
 
 #include "ezOptionParser/ezOptionParser.hpp"
@@ -16,7 +14,7 @@ bool fileAvailable(const std::string& path) {
 
 int main(int argc, const char* argv[]) {
   ez::ezOptionParser opt;
-  opt.overview = "SuperFamicheck 1.0";
+  opt.overview = "SuperFamicheck 1.0.1";
   opt.syntax = "superfamicheck rom_file [options...]";
 
   opt.add("",    // Default
@@ -63,7 +61,7 @@ int main(int argc, const char* argv[]) {
   bool verysilent = opt.isSet("-S");
 
   if (!opt.gotRequired(badOptions)) {
-    for (int i = 0; i < badOptions.size(); ++i) {
+    for (size_t i = 0; i < badOptions.size(); ++i) {
       cerr << "Missing required option: " << badOptions[i] << "\n\n";
     }
     std::cout << usage;
@@ -71,7 +69,7 @@ int main(int argc, const char* argv[]) {
   }
 
   if (!opt.gotExpected(badOptions)) {
-    for (int i = 0; i < badOptions.size(); ++i) {
+    for (size_t i = 0; i < badOptions.size(); ++i) {
       cerr << "Missing argument for option: " << badOptions[i] << "\n\n";
     }
     std::cout << usage;
@@ -79,7 +77,7 @@ int main(int argc, const char* argv[]) {
   }
 
   if (!opt.gotValid(badOptions, badArgs)) {
-    for (int i = 0; i < badOptions.size(); ++i) {
+    for (size_t i = 0; i < badOptions.size(); ++i) {
       cerr << "Invalid argument for option: " << badOptions[i] << "\n\n";
     }
     std::cout << usage;
@@ -101,14 +99,20 @@ int main(int argc, const char* argv[]) {
 
   sfcRom rom(inputPath);
 
-  if (!verysilent) { cout << rom.description(silent); }
+  if (!verysilent) {
+    cout << rom.description(silent);
+  }
 
   if (rom.isValid() && opt.isSet("-f")) {
     string outputPath = inputPath;
-    if (opt.isSet("-o")) opt.get("-o")->getString(outputPath);
+    if (opt.isSet("-o")) {
+      opt.get("-o")->getString(outputPath);
+    }
 
     string fixDescripton = rom.fix(outputPath, silent);
-    if (!verysilent) cout << fixDescripton;
+    if (!verysilent) {
+      cout << fixDescripton;
+    }
   }
 
   return 0;

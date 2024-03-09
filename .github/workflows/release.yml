@@ -1,0 +1,51 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  release_macos_arm64:
+    runs-on: macos-14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Build
+        run: |
+          make TARGET="-target arm64-apple-macos11"
+          zip -j superfamicheck_macos_arm64_${{ github.ref_name }}.zip bin/superfamicheck README.md LICENSE
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: superfamicheck_macos_arm64_${{ github.ref_name }}.zip
+  release_macos_x86_64:
+    runs-on: macos-14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Build
+        run: |
+          make TARGET="-target x86_64-apple-macos11"
+          zip -j superfamicheck_macos_x86-64_${{ github.ref_name }}.zip bin/superfamicheck README.md LICENSE
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: superfamicheck_macos_x86-64_${{ github.ref_name }}.zip
+  release_win64:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Build
+        run: |
+          mkdir build && cd build && cmake .. && cmake --build . --config Release && cd ..
+          move build\Release\superfamicheck.exe superfamicheck.exe
+          Compress-Archive -LiteralPath superfamicheck.exe, README.md, LICENSE -DestinationPath superfamicheck_win64_${{ github.ref_name }}.zip
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: superfamicheck_win64_${{ github.ref_name }}.zip
