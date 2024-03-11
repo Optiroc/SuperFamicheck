@@ -1,41 +1,16 @@
-SRC_DIR   := src
-BIN_DIR   := bin
-OBJ_DIR   := .build
-
-CXX       ?= g++
-
-CXX_FLAGS := -std=c++20 -Wall -Wextra
-LD_FLAGS  :=
-TARGET    :=
-
-ifeq ($(DEBUG), 1)
-  CXX_FLAGS += -O0 -g
-else
-  CXX_FLAGS += -O3 -flto
-endif
-
-OBJ       := $(OBJ_DIR)/sfcRom.o $(OBJ_DIR)/superfamicheck.o
-HEADERS   := $(wildcard $(SRC_DIR)/*.h)
+BUILD_DIR := build
 
 .PHONY: clean
 
-default: superfamicheck
+release:
+	cmake -B$(BUILD_DIR)/release
+	cmake --build $(BUILD_DIR)/release --parallel 4
 
-all: clean superfamicheck
+debug:
+	cmake -B$(BUILD_DIR)/debug --parallel 4 -DCMAKE_BUILD_TYPE=Debug
+	cmake --build $(BUILD_DIR)/debug
 
-superfamicheck: $(BIN_DIR)/superfamicheck
-
-$(BIN_DIR)/superfamicheck : $(OBJ) | $(BIN_DIR)
-	$(CXX) $(LD_FLAGS) $(TARGET) $^ -o $@
-
-$(OBJ_DIR)/%.o : ./**/%.cpp $(HEADERS) | $(OBJ_DIR)
-	$(CXX) $(CXX_FLAGS) $(TARGET) -c $< -o $@
-
-$(BIN_DIR):
-	@mkdir -pv $@
-
-$(OBJ_DIR):
-	@mkdir -pv $@
+all: clean release
 
 clean:
-	@rm -rf $(OBJ_DIR) $(BIN_DIR)
+	@rm -rf $(BUILD_DIR)
