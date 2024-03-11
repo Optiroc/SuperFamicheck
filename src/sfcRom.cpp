@@ -284,7 +284,6 @@ string sfcRom::fix(const string& path, bool silent) {
     if (!silent) {
       os << "  Removed copier header" << '\n';
     }
-    ++fixedIssues;
   }
 
   if (!hasCorrectTitle) {
@@ -317,7 +316,7 @@ string sfcRom::fix(const string& path, bool silent) {
     }
   }
 
-  if (fixedIssues || path != filepath) {
+  if (fixedIssues || hasCopierHeader || path != filepath) {
     ofstream file(path, ios::binary | ios::trunc);
     if (file && file.good()) {
       file.write((char*)&image[0], image.size() * sizeof(uint8_t));
