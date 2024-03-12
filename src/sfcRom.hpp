@@ -7,9 +7,17 @@
 struct sfcRom {
   sfcRom(const std::string& path);
 
-  bool isValid() const;
   std::string description(bool silent) const;
   std::string fix(const std::string& path, bool silent);
+
+  bool isValid() const { return _isValid; }
+  bool hasIssues() const { return _hasIssues; }
+  bool hasCopierHeader() { return _hasCopierHeader; }
+  bool hasCorrectTitle() { return _hasCorrectTitle; }
+  bool hasCorrectRamSize() { return _hasCorrectRamSize; }
+  bool hasLegalMode() { return _hasLegalMode; }
+  bool hasKnownMapper() { return _hasKnownMapper; }
+  bool hasNewFormatHeader() { return _hasNewFormatHeader; }
 
 private:
   std::string filepath;
@@ -23,16 +31,16 @@ private:
   size_t imageOffset = 0;
   size_t headerLocation;
 
-  bool valid = false;
-  bool hasIssues = false;
-  bool hasSevereIssues = false;
+  bool _isValid = false;
+  bool _hasIssues = false;
+  bool _hasSevereIssues = false;
 
-  bool hasCopierHeader = false;
-  bool hasCorrectTitle = false;
-  bool hasCorrectRamSize = true;
-  bool hasLegalMode = true;
-  bool hasKnownMapper = true;
-  bool hasNewFormatHeader = false;
+  bool _hasCopierHeader = false;
+  bool _hasCorrectTitle = false;
+  bool _hasCorrectRamSize = true;
+  bool _hasLegalMode = true;
+  bool _hasKnownMapper = true;
+  bool _hasNewFormatHeader = false;
 
   uint8_t correctedMode = 0;
   uint8_t correctedRomSize = 0;
