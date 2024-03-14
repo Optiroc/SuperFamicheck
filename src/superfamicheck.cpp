@@ -103,7 +103,7 @@ int main(int argc, const char* argv[]) {
     cout << rom.description(silent);
   }
 
-  if (rom.isValid() && opt.isSet("-f")) {
+  if (rom.isValid && opt.isSet("-f")) {
     string outputPath = inputPath;
     if (opt.isSet("-o")) {
       opt.get("-o")->getString(outputPath);

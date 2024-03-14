@@ -1,5 +1,3 @@
-#include "sfcRom.hpp"
-
 #include <climits>
 #include <cstdint>
 #include <fstream>
@@ -8,6 +6,8 @@
 #include <sstream>
 #include <string>
 #include <vector>
+
+#include "sfcRom.hpp"
 
 using namespace std;
 
@@ -28,7 +28,7 @@ sfcRom::sfcRom(const string& path) {
     if (file) {
       size_t fileSize = file.tellg();
       if ((fileSize & 0x3ff) == 0x200) {
-        _hasCopierHeader = true;
+        hasCopierHeader = true;
         imageOffset = 0x200;
         ++issues;
       }
@@ -68,7 +68,7 @@ sfcRom::sfcRom(const string& path) {
     if (headerLocation == 0) {
       return;
     } else {
-      _isValid = true;
+      isValid = true;
     }
   }
 
@@ -77,14 +77,14 @@ sfcRom::sfcRom(const string& path) {
 
   // Check title
   {
-    _hasCorrectTitle = true;
+    hasCorrectTitle = true;
     for (size_t i = 0; i < 21; ++i) {
       if (sjisToString(image[headerLocation + 0x10 + i]).empty())
-        _hasCorrectTitle = false;
+        hasCorrectTitle = false;
     }
-    if (!_hasCorrectTitle) {
+    if (!hasCorrectTitle) {
       ++issues;
-      _hasSevereIssues = true;
+      hasSevereIssues = true;
     }
   }
 
@@ -92,13 +92,13 @@ sfcRom::sfcRom(const string& path) {
   {
     if ((mode & 0xe0) != 0x20) {
       correctedMode = headerLocation >= 0x8000 ? 0x21 : 0x20;
-      _hasLegalMode = false;
-      _hasSevereIssues = true;
+      hasLegalMode = false;
+      hasSevereIssues = true;
       ++issues;
     }
 
     if (mapperName.empty()) {
-      _hasKnownMapper = false;
+      hasKnownMapper = false;
       ++issues;
     }
   }
@@ -124,7 +124,7 @@ sfcRom::sfcRom(const string& path) {
   // Check RAM size
   {
     if ((hasRam && ramSize > 0x0f) || (!hasRam && ramSize != 0)) {
-      _hasCorrectRamSize = false;
+      hasCorrectRamSize = false;
       ++issues;
     }
   }
@@ -138,22 +138,22 @@ sfcRom::sfcRom(const string& path) {
     }
   }
 
-  if (issues || _hasSevereIssues) {
-    _hasIssues = true;
+  if (issues || hasSevereIssues) {
+    hasIssues = true;
   }
 }
 
 
 string sfcRom::description(bool silent) const {
   ostringstream os;
-  if (_isValid) {
+  if (isValid) {
     os << setfill('0') << hex;
 
     if (!silent) {
       os << "ROM info for file \"" << filepath << "\""
          << "\n\n";
 
-      uint32_t headerAt = headerLocation + (_hasNewFormatHeader ? 0 : 0x10);
+      uint32_t headerAt = headerLocation + (hasNewFormatHeader ? 0 : 0x10);
       os << "  Header at   0x" << setw(4) << headerAt << '\n';
       os << "  Title       " << title << '\n';
       if (!gameCode.empty()) {
@@ -186,7 +186,7 @@ string sfcRom::description(bool silent) const {
         }
       }
 
-      if (_hasLegalMode) {
+      if (hasLegalMode) {
         os << "  Map mode    0x" << setw(2) << static_cast<uint16_t>(mapper);
         if (mapperName.empty()) {
           os << '\n';
@@ -216,30 +216,30 @@ string sfcRom::description(bool silent) const {
       os << '\n';
     }
 
-    if (_hasIssues) {
+    if (hasIssues) {
       if (silent) {
         os << "Issues with \"" << filepath << "\":" << '\n';
       } else {
-        if (_hasSevereIssues) {
+        if (hasSevereIssues) {
           os << "Severe issues were found:" << '\n';
         } else {
           os << "The following issues were found:" << '\n';
         }
       }
 
-      if (_hasCorrectTitle == false) {
+      if (hasCorrectTitle == false) {
         os << "  ROM title contains illegal characters" << '\n';
       }
-      if (!_hasLegalMode) {
+      if (!hasLegalMode) {
         os << "  ROM makeup 0x" << setw(2) << static_cast<uint16_t>(mode) << " is not allowed";
         os << ", best guess is 0x" << setw(2) << static_cast<uint16_t>(correctedMode) << '\n';
-      } else if (!_hasKnownMapper) {
+      } else if (!hasKnownMapper) {
         os << "  ROM makeup 0x" << setw(2) << static_cast<uint16_t>(mode) << " is an unknown type" << '\n';
       }
       if (correctedRomSize && romSize != correctedRomSize) {
         os << "  ROM size should be 0x" << setw(2) << static_cast<uint16_t>(correctedRomSize) << '\n';
       }
-      if (!_hasCorrectRamSize) {
+      if (!hasCorrectRamSize) {
         if (hasRam) {
           os << "  RAM size specified too large" << '\n';
         } else {
@@ -250,7 +250,7 @@ string sfcRom::description(bool silent) const {
         os << "  Checksum/complement should be 0x" << setw(4) << correctedChecksum << "/0x" << setw(4) << correctedComplement
            << '\n';
       }
-      if (_hasCopierHeader) {
+      if (hasCopierHeader) {
         os << "  File has a copier header (0x200 bytes)" << '\n';
       }
       if (!silent)
@@ -265,7 +265,7 @@ string sfcRom::description(bool silent) const {
 
 
 string sfcRom::fix(const string& path, bool silent) {
-  if (!_isValid)
+  if (!isValid)
     return string();
   ostringstream os;
 
@@ -277,17 +277,17 @@ string sfcRom::fix(const string& path, bool silent) {
     os << "Writing ROM image to file \"" << path << "\"" << '\n';
   }
 
-  if (_hasCopierHeader) {
+  if (hasCopierHeader) {
     if (!silent) {
       os << "  Removed copier header" << '\n';
     }
   }
 
-  if (!_hasCorrectTitle) {
+  if (!hasCorrectTitle) {
     // TODO
   }
 
-  if (!_hasLegalMode) {
+  if (!hasLegalMode) {
     image[headerLocation + 0x25] = correctedMode;
     ++fixedIssues;
     if (!silent) {
@@ -313,7 +313,7 @@ string sfcRom::fix(const string& path, bool silent) {
     }
   }
 
-  if (fixedIssues || _hasCopierHeader || path != filepath) {
+  if (fixedIssues || hasCopierHeader || path != filepath) {
     ofstream file(path, ios::binary | ios::trunc);
     if (file && file.good()) {
       file.write((char*)&image[0], image.size() * sizeof(uint8_t));
@@ -393,10 +393,10 @@ void sfcRom::getHeaderInfo(const vector<uint8_t>& header) {
   mapper = mode & 0x0f;
   fast = mode & 0x10;
 
-  _hasNewFormatHeader = (header[0x2a] == 0x33);
+  hasNewFormatHeader = (header[0x2a] == 0x33);
 
   chipset = header[0x26];
-  if (_hasNewFormatHeader) {
+  if (hasNewFormatHeader) {
     chipsetSubtype = header[0x0f];
   }
   romSize = header[0x27];
@@ -435,7 +435,7 @@ void sfcRom::getHeaderInfo(const vector<uint8_t>& header) {
     break;
   }
 
-  if (_hasNewFormatHeader) {
+  if (hasNewFormatHeader) {
     makerCode = string((char*)&header[0x00], 2);
     gameCode = string((char*)&header[0x02], 4);
   } else {

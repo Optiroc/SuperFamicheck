@@ -21,13 +21,11 @@ inline constexpr auto rom0 = "data/rom0.sfc";
 inline constexpr auto rom1 = "data/rom1.sfc";
 
 bool rom_isValid(const std::string& path) {
-  std::cout  << '\n' << "--- Loading: " << path << '\n';
   sfcRom rom(path);
-  std::cout << "--- Loaded: " << path << '\n';
-  return rom.isValid();
+  return rom.isValid;
 }
 
 TEST_CASE("sfcRom.isValid") {
-  REQUIRE(rom_isValid(rom1) == true);
   REQUIRE(rom_isValid(rom0) == false);
+  REQUIRE(rom_isValid(rom1) == true);
 }
