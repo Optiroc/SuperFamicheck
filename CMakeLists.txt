@@ -4,7 +4,7 @@ project(superfamicheck LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 
 if(NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE Release)
+  set(CMAKE_BUILD_TYPE Debug)
 endif()
 
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
@@ -20,6 +20,6 @@ endif()
 set(SOURCES src/superfamicheck.cpp src/sfcRom.cpp)
 add_executable(superfamicheck ${SOURCES})
 
-if(NOT MSVC)
+if(CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT MSVC)
   set_property(TARGET superfamicheck PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
 endif()

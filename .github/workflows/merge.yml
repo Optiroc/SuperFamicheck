@@ -1,4 +1,4 @@
-name: Main merge and pre-merge
+name: Merge
 
 on:
   pull_request:
@@ -6,8 +6,15 @@ on:
     branches: main
 
 jobs:
+  unit_tests:
+    runs-on: macos-14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Run tests
+        run: cd test && make
   build_ubuntu:
-    name: Linux
+    needs: unit_tests
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -15,7 +22,7 @@ jobs:
       - name: Build
         run: make
   build_macos:
-    name: macOS
+    needs: unit_tests
     runs-on: macos-14
     steps:
       - name: Checkout
@@ -23,7 +30,7 @@ jobs:
       - name: Build
         run: make
   build_windows:
-    name: Windows
+    needs: unit_tests
     runs-on: windows-latest
     steps:
       - name: Checkout
