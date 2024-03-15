@@ -6,7 +6,7 @@
             "type": "lldb",
             "request": "launch",
             "program": "${workspaceFolder}/build/superfamicheck",
-            "args": ["test/data/rom1.sfc"],
+            "args": ["test/data/public/rom1.sfc"],
             "preLaunchTask": "${defaultBuildTask}"
         }
     ]

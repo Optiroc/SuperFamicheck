@@ -14,7 +14,7 @@ bool fileAvailable(const std::string& path) {
 
 int main(int argc, const char* argv[]) {
   ez::ezOptionParser opt;
-  opt.overview = "SuperFamicheck 1.0.1";
+  opt.overview = "SuperFamicheck 1.1.0";
   opt.syntax = "superfamicheck rom_file [options...]";
 
   opt.add("",    // Default

@@ -59,7 +59,7 @@ sfcRom::sfcRom(const string& path) {
 
     int top = INT_MIN;
     for (auto p : scoredHeaderLocations) {
-      if (p.first > top) {
+      if (p.first >= top) {
         headerLocation = p.second;
         top = p.first;
       }
@@ -107,12 +107,12 @@ sfcRom::sfcRom(const string& path) {
   {
     if (imageSize > (1 << (romSize + 10)) || imageSize <= (1 << (romSize + 9))) {
       uint32_t pot = imageSize;
-      int pot_n = 0;
+      int potN = 0;
       while (pot >>= 1) {
         if (pot & 1)
-          ++pot_n;
+          ++potN;
       }
-      correctedRomSize = (pot_n > 1) ? 1 : 0;
+      correctedRomSize = (potN > 1) ? 1 : 0;
       uint32_t t = imageSize >> 10;
       while (t >>= 1)
         ++correctedRomSize;
@@ -621,37 +621,50 @@ void sfcRom::getHeaderInfo(const vector<uint8_t>& header) {
 }
 
 uint16_t sfcRom::calculateChecksum() const {
-  size_t rsize = (1 << (correctedRomSize != 0 ? correctedRomSize + 10 : romSize + 10));
-  if (mode == 0x3a) {
-    rsize = imageSize;
-  }
+  size_t imageSize = image.size();
+  size_t mappedSize;
 
-  // Set up base and mask for out of bounds mirroring
-  size_t isize = image.size();
-  uint32_t mask = 1;
-  uint32_t t = isize;
-  while (t >>= 1) {
-    mask <<= 1;
-    mask += 1;
+  // Base and mask for out of bounds mirroring
+  uint32_t base = 0;
+  uint32_t offsetMask = 0xffffffff;
+  uint32_t offsetMod = 0xffffffff;
+
+  if (mapper == 0x0a && chipset == 0xf9 && chipsetSubtype == 0x00) {
+    // Extended HiROM/SPC7110+RTC+Battery
+    mappedSize = imageSize;
+  } else if (mapper == 0x0a && chipset == 0xf5 && chipsetSubtype == 0x00) {
+    // Extended HiROM/SPC7110+Battery
+    mappedSize = imageSize > 0x200000 ? imageSize << 1 : imageSize;
+    offsetMod = imageSize;
+  } else {
+    mappedSize = 1 << (correctedRomSize != 0 ? correctedRomSize + 10 : romSize + 10);
+    uint32_t mask = 1;
+    uint32_t t = imageSize;
+    while (t >>= 1) {
+      mask <<= 1;
+      mask += 1;
+    }
+    mask >>= 1;
+    base = mask + 1;
+    offsetMask = imageSize - base - 1;
   }
-  mask >>= 1;
-  uint32_t base = mask + 1;
-  uint32_t offset_mask = isize - base - 1;
 
   // Add sum
-  size_t chkloc = headerLocation + 0x2c;
+  auto img = image;
+  putWord(img, headerLocation + 0x2c, 0xffff);
+  putWord(img, headerLocation + 0x2e, 0x0000);
   uint16_t sum = 0;
 
-  for (size_t offset = 0; offset < rsize; ++offset) {
-    if (!(offset >= chkloc && offset < chkloc + 4)) {
-      if (offset < isize) {
-        sum += image[offset];
-      } else {
-        sum += image[base + (offset & offset_mask)];
-      }
+  for (size_t offset = 0; offset < mappedSize; ++offset) {
+    size_t imgOffset = offset % offsetMod;
+    if (imgOffset < imageSize) {
+      sum += img[imgOffset];
+    } else {
+      size_t mirrorOffset = base + (imgOffset & offsetMask);
+      sum += img[mirrorOffset];
     }
   }
-  return sum + 0x1fe;
+  return sum;
 }
 
 
