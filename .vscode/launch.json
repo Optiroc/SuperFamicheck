@@ -1,13 +1,15 @@
 {
-    "version": "0.2.0",
-    "configurations": [
-        {
-            "name": "Debug",
-            "type": "lldb",
-            "request": "launch",
-            "program": "${workspaceFolder}/build/superfamicheck",
-            "args": ["test/data/public/rom1.sfc"],
-            "preLaunchTask": "${defaultBuildTask}"
-        }
-    ]
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug",
+      "type": "lldb",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/superfamicheck",
+      "args": [
+        "test/data/public/rom1.sfc"
+      ],
+      "preLaunchTask": "${defaultBuildTask}",
+    }
+  ]
 }

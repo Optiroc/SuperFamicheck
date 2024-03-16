@@ -92,14 +92,16 @@ sfcRom::sfcRom(const string& path) {
   {
     if ((mode & 0xe0) != 0x20) {
       correctedMode = headerLocation >= 0x8000 ? 0x21 : 0x20;
-      hasLegalMode = false;
       hasSevereIssues = true;
       ++issues;
+    } else {
+      hasLegalMode = true;
     }
 
     if (mapperName.empty()) {
-      hasKnownMapper = false;
       ++issues;
+    } else {
+      hasKnownMapper = true;
     }
   }
 
@@ -124,8 +126,9 @@ sfcRom::sfcRom(const string& path) {
   // Check RAM size
   {
     if ((hasRam && ramSize > 0x0f) || (!hasRam && ramSize != 0)) {
-      hasCorrectRamSize = false;
       ++issues;
+    } else {
+      hasCorrectRamSize = true;
     }
   }
 
@@ -133,8 +136,10 @@ sfcRom::sfcRom(const string& path) {
   {
     correctedChecksum = calculateChecksum();
     correctedComplement = ~correctedChecksum;
-    if (checksum != correctedChecksum) {
+    if ((checksum != correctedChecksum) || complement != correctedComplement) {
       ++issues;
+    } else {
+      hasCorrectChecksum = true;
     }
   }
 
@@ -246,7 +251,7 @@ string sfcRom::description(bool silent) const {
           os << "  RAM size should be 0x00" << '\n';
         }
       }
-      if (checksum != correctedChecksum || complement != correctedComplement) {
+      if (!hasCorrectChecksum) {
         os << "  Checksum/complement should be 0x" << setw(4) << correctedChecksum << "/0x" << setw(4) << correctedComplement
            << '\n';
       }
@@ -621,13 +626,12 @@ void sfcRom::getHeaderInfo(const vector<uint8_t>& header) {
 }
 
 uint16_t sfcRom::calculateChecksum() const {
-  size_t imageSize = image.size();
-  size_t mappedSize;
+  vector<uint8_t> img = image;
+  putWord(img, headerLocation + 0x2c, 0xffff);
+  putWord(img, headerLocation + 0x2e, 0x0000);
 
-  // Base and mask for out of bounds mirroring
-  uint32_t base = 0;
-  uint32_t offsetMask = 0xffffffff;
-  uint32_t offsetMod = 0xffffffff;
+  size_t imageSize = img.size();
+  size_t mappedSize;
 
   if (mapper == 0x0a && chipset == 0xf9 && chipsetSubtype == 0x00) {
     // Extended HiROM/SPC7110+RTC+Battery
@@ -635,44 +639,40 @@ uint16_t sfcRom::calculateChecksum() const {
   } else if (mapper == 0x0a && chipset == 0xf5 && chipsetSubtype == 0x00) {
     // Extended HiROM/SPC7110+Battery
     mappedSize = imageSize > 0x200000 ? imageSize << 1 : imageSize;
-    offsetMod = imageSize;
-  } else {
-    mappedSize = 1 << (correctedRomSize != 0 ? correctedRomSize + 10 : romSize + 10);
-    uint32_t mask = 1;
-    uint32_t t = imageSize;
-    while (t >>= 1) {
-      mask <<= 1;
-      mask += 1;
+    while (mappedSize > img.size()) {
+      size_t remaining = mappedSize - img.size();
+      if (remaining > image.size()) {
+        remaining = image.size();
+      }
+      if ((remaining + img.size()) > mappedSize) {
+        remaining = mappedSize - img.size();
+      }
+      vector<uint8_t> mirror(img.begin(), img.begin() + remaining);
+      img.insert(img.end(), mirror.begin(), mirror.end());
     }
-    mask >>= 1;
-    base = mask + 1;
-    offsetMask = imageSize - base - 1;
+  } else {
+    // Standard mapping
+    mappedSize = 1 << (correctedRomSize != 0 ? correctedRomSize + 10 : romSize + 10);
+    while (mappedSize > img.size()) {
+      vector<uint8_t> mirror(img.begin() + (mappedSize >> 1), img.end());
+      img.insert(img.end(), mirror.begin(), mirror.end());
+    }
   }
 
-  // Add sum
-  auto img = image;
-  putWord(img, headerLocation + 0x2c, 0xffff);
-  putWord(img, headerLocation + 0x2e, 0x0000);
   uint16_t sum = 0;
-
-  for (size_t offset = 0; offset < mappedSize; ++offset) {
-    size_t imgOffset = offset % offsetMod;
-    if (imgOffset < imageSize) {
-      sum += img[imgOffset];
-    } else {
-      size_t mirrorOffset = base + (imgOffset & offsetMask);
-      sum += img[mirrorOffset];
-    }
+  size_t length = img.size();
+  for (size_t offset = 0; offset < length; ++offset) {
+    sum += img[offset];
   }
   return sum;
 }
 
-
-// Get/put little endian word
+// Get little endian word
 uint16_t getWord(const vector<uint8_t>& vec, size_t offset) {
   return (uint16_t)((vec[offset]) + ((uint8_t)(vec[offset + 1]) << 8));
 }
 
+// Put little endian word
 void putWord(vector<uint8_t>& vec, size_t offset, uint16_t value) {
   vec[offset] = (uint8_t)(value & 0xff);
   vec[offset + 1] = (uint8_t)(value >> 8);
