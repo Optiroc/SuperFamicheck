@@ -1,8 +1,8 @@
+#include "../src/sfcRom.hpp"
+#include <catch2/catch_test_macros.hpp>
 #include <filesystem>
 #include <iostream>
 #include <string>
-#include <catch2/catch_test_macros.hpp>
-#include "../src/sfcRom.hpp"
 
 //
 // Simple test ROMs
@@ -122,54 +122,53 @@ inline constexpr auto rom_spl4 = "data/private/spl4.sfc";
 inline constexpr auto rom_tmz = "data/private/tmz.sfc";
 
 bool file_exists(const std::string& path) {
-  std::filesystem::path p { path };
-  return std::filesystem::is_regular_file(p);
+    return std::filesystem::is_regular_file(std::filesystem::path(path));
 }
 
 bool rom_isValid(const std::string& path, bool expected) {
-  if (!file_exists(path)) {
-    std::cout << "File '" << path << "' not found, skipping\n";
-    return expected;
-  }
-  sfcRom rom(path);
-  return rom.isValid;
+    if (!file_exists(path)) {
+        std::cout << "File '" << path << "' not found, skipping\n";
+        return expected;
+    }
+    sfcRom rom(path);
+    return rom.isValid;
 }
 
 bool rom_hasCorrectChecksum(const std::string& path, bool expected) {
-  if (!file_exists(path)) {
-    std::cout << "File '" << path << "' not found, skipping\n";
-    return expected;
-  }
-  sfcRom rom(path);
-  return rom.hasCorrectChecksum;
+    if (!file_exists(path)) {
+        std::cout << "File '" << path << "' not found, skipping\n";
+        return expected;
+    }
+    sfcRom rom(path);
+    return rom.hasCorrectChecksum;
 }
 
 TEST_CASE("sfcRom.isValid") {
-  REQUIRE(rom_isValid(rom0, false) == false);
-  REQUIRE(rom_isValid(rom1, true) == true);
-  REQUIRE(rom_isValid(rom_atvj, true) == true);
-  REQUIRE(rom_isValid(rom_atvj_bad, true) == true);
-  REQUIRE(rom_isValid(rom_dkm2, true) == true);
-  REQUIRE(rom_isValid(rom_m3, true) == true);
-  REQUIRE(rom_isValid(rom_mdh, true) == true);
-  REQUIRE(rom_isValid(rom_smw, true) == true);
-  REQUIRE(rom_isValid(rom_smw2, true) == true);
-  REQUIRE(rom_isValid(rom_so, true) == true);
-  REQUIRE(rom_isValid(rom_spl4, true) == true);
-  REQUIRE(rom_isValid(rom_tmz, true) == true);
+    REQUIRE(rom_isValid(rom0, false) == false);
+    REQUIRE(rom_isValid(rom1, true) == true);
+    REQUIRE(rom_isValid(rom_atvj, true) == true);
+    REQUIRE(rom_isValid(rom_atvj_bad, true) == true);
+    REQUIRE(rom_isValid(rom_dkm2, true) == true);
+    REQUIRE(rom_isValid(rom_m3, true) == true);
+    REQUIRE(rom_isValid(rom_mdh, true) == true);
+    REQUIRE(rom_isValid(rom_smw, true) == true);
+    REQUIRE(rom_isValid(rom_smw2, true) == true);
+    REQUIRE(rom_isValid(rom_so, true) == true);
+    REQUIRE(rom_isValid(rom_spl4, true) == true);
+    REQUIRE(rom_isValid(rom_tmz, true) == true);
 }
 
 TEST_CASE("sfcRom.hasCorrectChecksum") {
-  REQUIRE(rom_hasCorrectChecksum(rom0, false) == false);
-  REQUIRE(rom_hasCorrectChecksum(rom1, false) == false);
-  REQUIRE(rom_hasCorrectChecksum(rom_atvj, true) == true);
-  REQUIRE(rom_hasCorrectChecksum(rom_atvj_bad, false) == false);
-  REQUIRE(rom_hasCorrectChecksum(rom_dkm2, true) == true);
-  REQUIRE(rom_hasCorrectChecksum(rom_m3, true) == true);
-  REQUIRE(rom_hasCorrectChecksum(rom_mdh, true) == true);
-  REQUIRE(rom_hasCorrectChecksum(rom_smw, true) == true);
-  REQUIRE(rom_hasCorrectChecksum(rom_smw2, true) == true);
-  REQUIRE(rom_hasCorrectChecksum(rom_so, true) == true);
-  REQUIRE(rom_hasCorrectChecksum(rom_spl4, true) == true);
-  REQUIRE(rom_hasCorrectChecksum(rom_tmz, true) == true);
+    REQUIRE(rom_hasCorrectChecksum(rom0, false) == false);
+    REQUIRE(rom_hasCorrectChecksum(rom1, false) == false);
+    REQUIRE(rom_hasCorrectChecksum(rom_atvj, true) == true);
+    REQUIRE(rom_hasCorrectChecksum(rom_atvj_bad, false) == false);
+    REQUIRE(rom_hasCorrectChecksum(rom_dkm2, true) == true);
+    REQUIRE(rom_hasCorrectChecksum(rom_m3, true) == true);
+    REQUIRE(rom_hasCorrectChecksum(rom_mdh, true) == true);
+    REQUIRE(rom_hasCorrectChecksum(rom_smw, true) == true);
+    REQUIRE(rom_hasCorrectChecksum(rom_smw2, true) == true);
+    REQUIRE(rom_hasCorrectChecksum(rom_so, true) == true);
+    REQUIRE(rom_hasCorrectChecksum(rom_spl4, true) == true);
+    REQUIRE(rom_hasCorrectChecksum(rom_tmz, true) == true);
 }

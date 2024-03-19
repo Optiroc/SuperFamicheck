@@ -1,0 +1,47 @@
+Checks: '-*,
+  cppcoreguidelines-init-variables,
+  cppcoreguidelines-prefer-member-initializer,
+  misc-confusable-identifiers,
+  misc-const-correctness,
+  misc-definitions-in-headers,
+  misc-header-include-cycle,
+  misc-include-cleaner,
+  misc-misleading-bidirectional,
+  misc-misleading-identifier,
+  misc-misplaced-const,
+  misc-redundant-expression,
+  misc-unused-parameters,
+  misc-unused-using-decls,
+  modernize-concat-nested-namespaces,
+  modernize-deprecated-headers,
+  modernize-loop-convert,
+  modernize-pass-by-value,
+  modernize-redundant-void-arg,
+  modernize-shrink-to-fit,
+  modernize-use-auto,
+  modernize-use-bool-literals,
+  modernize-use-emplace,
+  modernize-use-nullptr,
+  modernize-use-starts-ends-with,
+  modernize-use-std-numbers,
+  performance-faster-string-find,
+  performance-for-range-copy,
+  performance-implicit-conversion-in-loop,
+  performance-inefficient-algorithm,
+  performance-inefficient-string-concatenation,
+  performance-inefficient-vector-operation,
+  readability-string-compare,
+  readability-braces-around-statements,
+  readability-identifier-length,
+  readability-identifier-naming,
+  readability-string-compare,
+  '
+WarningsAsErrors: true
+FormatStyle: file
+CheckOptions:
+  - key: readability-identifier-length.MinimumLoopCounterNameLength
+    value: 2
+  - key: readability-identifier-length.MinimumParameterNameLength
+    value: 2
+  - key: readability-identifier-length.MinimumVariableNameLength
+    value: 2

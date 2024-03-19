@@ -10,6 +10,15 @@
         "test/data/public/rom1.sfc"
       ],
       "preLaunchTask": "${defaultBuildTask}",
+    },
+    {
+      "name": "Test",
+      "type": "lldb",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/test",
+      "program": "${workspaceFolder}/test/build/test",
+      "args": [],
+      "preLaunchTask": "CMake: build test",
     }
   ]
 }

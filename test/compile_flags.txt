@@ -1,5 +1,0 @@
--I/usr/local/include
--xc++
--std=c++20
--Wall
--Wextra

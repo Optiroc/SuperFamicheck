@@ -3,16 +3,34 @@
 	"tasks": [
 		{
 			"type": "cmake",
+			"label": "CMake: configure",
+			"command": "configure",
+			"targets": [
+				"all"
+			]
+		},
+		{
+			"type": "cmake",
 			"label": "CMake: build",
 			"command": "build",
+			"dependsOn": [
+				"CMake: configure"
+			],
 			"targets": [
 				"all"
 			],
 			"group": {
 				"kind": "build",
 				"isDefault": true
-			},
-			"problemMatcher": []
+			}
+		},
+		{
+			"type": "shell",
+			"label": "CMake: build test",
+			"command": "cmake -Bbuild && cmake --build build --parallel 4",
+			"options": {
+				"cwd": "${workspaceFolder}/test"
+			}
 		}
 	]
 }
